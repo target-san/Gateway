@@ -1,8 +1,18 @@
 package targetsan.mcmods.gateway
 
-import net.minecraft.block.Block
+import net.minecraft.block.{Block, BlockObsidian}
 import net.minecraft.block.material.Material
+import net.minecraft.entity.Entity
+import net.minecraft.world.World
 
-class BlockGateway(blockId: Int) extends Block(blockId, Material.rock) {
-
+class BlockGateway(blockId: Int) extends BlockObsidian(blockId) {
+	setHardness(50.0F)
+    setResistance(2000.0F)
+    setStepSound(Block.soundStoneFootstep)
+    setUnlocalizedName("gateway")
+    setTextureName("gateway")
+    
+    override def onEntityWalking(world: World, x: Int, y: Int, z: Int, entity: Entity) {
+	    
+	}
 }
