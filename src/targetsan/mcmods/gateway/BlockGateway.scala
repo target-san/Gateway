@@ -11,7 +11,7 @@ class BlockGateway(blockId: Int) extends BlockObsidian(blockId) {
     setResistance(2000.0F)
     setStepSound(Block.soundStoneFootstep)
     setUnlocalizedName("gateway")
-    setTextureName("gateway")
+    setTextureName("gateway:gateway")
     setCreativeTab(CreativeTabs.tabRedstone)
     
     override def onEntityWalking(world: World, x: Int, y: Int, z: Int, entity: Entity) {
