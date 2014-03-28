@@ -7,6 +7,10 @@
 <listEntry value="1"/>
 </listAttribute>
 <stringAttribute key="org.eclipse.debug.ui.ATTR_CONSOLE_ENCODING" value="UTF-8"/>
+<listAttribute key="org.eclipse.debug.ui.favoriteGroups">
+<listEntry value="org.eclipse.debug.ui.launchGroup.debug"/>
+<listEntry value="org.eclipse.debug.ui.launchGroup.run"/>
+</listAttribute>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="net.minecraft.launchwrapper.Launch"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--version 1.6 --tweakClass cpw.mods.fml.common.launcher.FMLTweaker --username player"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="Gateway"/>
