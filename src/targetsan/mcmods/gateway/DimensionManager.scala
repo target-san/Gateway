@@ -9,8 +9,5 @@ object DimensionManager {
 	val NETHER_ID = -1
 	val ENDER_ID = 1
 	
-	implicit class EntityTeleporter[T <: Entity] (self: T) {
-	    def setPosition(x: Int, y: Int, z: Int, dim: Int) {
-	    }	    
-	}
+	
 }

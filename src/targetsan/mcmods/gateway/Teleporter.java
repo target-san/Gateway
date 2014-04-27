@@ -23,11 +23,11 @@ import net.minecraft.world.WorldServer;
 import cpw.mods.fml.common.registry.GameRegistry;
 
 public class Teleporter {
-	public static void teleport(Entity entity, double x, double y, double z, int dim) {
+	public static Entity teleport(Entity entity, double x, double y, double z, int dim) {
 		WorldServer destination = MinecraftServer.getServer().worldServerForDimension(dim);
 		if (destination == null)
-			return;
-		transferEntityWithRider(entity, x, y, z, destination);
+			return entity;
+		return transferEntityWithRider(entity, x, y, z, destination);
 	}
 
 	static Entity transferEntityWithRider(Entity entity, double x, double y, double z, WorldServer world) {
