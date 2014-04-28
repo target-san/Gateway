@@ -75,42 +75,32 @@ class BlockGateway(blockId: Int) extends BlockObsidian(blockId) {
 	 */
 	private def findExitPos(x: Double, z: Double, width: Double, dx: Double, dz: Double): (Double, Double) = {
 	    // FPU calculation precision
-	    val epsilon = 0.001
+	    val eps = 0.001
 	    // guard against zero velocity
 	    val (dx0, dz0) =
-    		if ( dx * dx + dz * dz > epsilon * epsilon) (dx, dz)
+    		if ( dx * dx + dz * dz > eps * eps) (dx, dz)
     		else (0.5 - x, 0.5 - z)
 	    // Compute line equation from move vector
 	    val a = -dz0
 	    val b = dx0
 	    val c = x * dz0 - z * dx0
-	    
+	    // Side coordinates for larger box, which edge would contain new entity center
+	    val collisionEps = 0.05
+	    val left = - (width / 2 + collisionEps)
+	    val right = -left + 1
+
 	    def findCoord1(coef1: Double, coef2: Double, coef3: Double, coord2: Double): Option[Double] =
-	        if (coef1.abs > epsilon) Some(- (coef2 * coord2 + coef3) / coef1) // no sense in dealing with tiny coefficients
+	        if (coef1.abs > eps) Some(- (coef2 * coord2 + coef3) / coef1) // no sense in dealing with tiny coefficients
 	        else None
-	        
+	     
 	    def pointFromX(x: Double): Option[(Double, Double)] =
-	        for (z <- findCoord1(b, a, c, x)) yield (x, z)
+	        for (z <- findCoord1(b, a, c, x) if left <= z && z <= right ) yield (x, z)
 	        
 	    def pointFromZ(z: Double): Option[(Double, Double)] =
-	        for (x <- findCoord1(a, b, c, z)) yield (x, z)
+	        for (x <- findCoord1(a, b, c, z) if left <= x && x <= right ) yield (x, z)
 	    
-	    def signedDist(x1: Double, z1: Double): Double = {
-	        val dx1 = x1 - x
-	        val dz1 = z1 - z
-	        (dx1 * dx1 + dz1 * dz1) * Math.signum(dx0 * dx1 + dz0 * dz1)
-	    }
-	    // Center coordinates for 4 boxes equal in size to entity box; each of them touches one of gateway's sides
-	    val left = - width / 2
-	    val right = -left + 1
-	    
-	    val point = List(pointFromX(left), pointFromX(right), pointFromZ(left), pointFromZ(right))
+	    List(pointFromX(left), pointFromX(right), pointFromZ(left), pointFromZ(right))
 	    	.flatten // get rid of inexistent points
-	    	.map { case (x1, z1) => (x1, z1, signedDist(x1, z1)) } // calculate distances
-	    	.filter( point => point._3 > 0 && point._3.abs > epsilon * epsilon) // drop negative and close to origin ones
-	    	.sortBy(_._3) // sort by distance
-	    	.head // take first one
-	    
-	    (point._1, point._2) // because there's no way to make 2-tuple from 3-one in-place
+	    	.head
 	}
 }
