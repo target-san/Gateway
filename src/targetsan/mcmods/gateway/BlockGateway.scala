@@ -10,6 +10,7 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.entity.EntityList
 import net.minecraft.entity.player.EntityPlayer
 import cpw.mods.fml.common.registry.GameRegistry
+import java.util.Random
 
 class BlockGateway(id: Int) extends BlockObsidian(id)
 	with Immobile
@@ -27,6 +28,11 @@ class BlockGateway(id: Int) extends BlockObsidian(id)
 	override def onBlockAdded(world: World, x: Int, y: Int, z: Int) {
 	    for (y1 <- y + 1 to y + PILLAR_HEIGHT)
 	        world.setBlock(x, y1, z, Blocks.portal.blockID)
+	}
+	
+	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: Random) {
+	    for (i <- 0 until 8)
+	        world.spawnParticle("portal", x + random.nextDouble(), y + 1.0, z + random.nextDouble(), 0.0, 1.5, 0.0)
 	}
 	// Teleports specified entity to other gateway
 	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) {
