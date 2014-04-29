@@ -71,9 +71,8 @@ class BlockGateway(id: Int) extends BlockObsidian(id)
 	
 	private def findExitPos(entity: Entity, x0: Int, y0: Int, z0: Int, x1: Int, y1: Int, z1: Int): (Double, Double, Double) = {
 	    val (entx, enty, entz) = (entity.posX - x0, entity.posY - y0, entity.posZ - z0)
-	    val destY = y1 + enty
 	    val (destX, destZ) = findExitPos(entx, entz, entity.width, entity.motionX, entity.motionZ)
-	    (destX, destY, destZ)
+	    (destX + x1, enty + y1, destZ + z1)
 	}
 	/** Searches for entity's suitable XZ exit position out of gateway
 	 *  Assumes that gateway block is at (0, 0), so recalculate entity coordinates
@@ -95,16 +94,22 @@ class BlockGateway(id: Int) extends BlockObsidian(id)
 	    val right = -left + 1
 
 	    def findCoord1(coef1: Double, coef2: Double, coef3: Double, coord2: Double): Option[Double] =
-	        if (coef1.abs > eps) Some(- (coef2 * coord2 + coef3) / coef1) // no sense in dealing with tiny coefficients
-	        else None
+	        if (coef1.abs < eps) None // no sense in dealing with tiny coefficients
+	        else {
+	            val coord1 = - (coef2 * coord2 + coef3) / coef1
+	            if (left <= coord1 && coord1 <= right) Some(coord1)
+	            else None
+	        }
+	    
+	    def sameDir(x1: Double, z1: Double): Boolean = dx0 * (x1 - x) + dz0 * (z1 - z) > 0 
 	     
 	    def pointFromX(x: Double): Option[(Double, Double)] =
-	        for (z <- findCoord1(b, a, c, x) if left <= z && z <= right ) yield (x, z)
+	        for (z <- findCoord1(b, a, c, x) if sameDir(x, z)) yield (x, z)
 	        
 	    def pointFromZ(z: Double): Option[(Double, Double)] =
-	        for (x <- findCoord1(a, b, c, z) if left <= x && x <= right ) yield (x, z)
+	        for (x <- findCoord1(a, b, c, z) if sameDir(x, z) ) yield (x, z)
 	    
-	    List(pointFromX(left), pointFromX(right), pointFromZ(left), pointFromZ(right))
+	    List(pointFromX(left), pointFromX(right), pointFromZ(left), pointFromZ(right)) 
 	    	.flatten // get rid of inexistent points
 	    	.head
 	}
