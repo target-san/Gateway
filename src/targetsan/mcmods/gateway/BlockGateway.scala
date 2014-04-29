@@ -9,8 +9,12 @@ import net.minecraft.world.IBlockAccess
 import net.minecraft.server.MinecraftServer
 import net.minecraft.entity.EntityList
 import net.minecraft.entity.player.EntityPlayer
+import cpw.mods.fml.common.registry.GameRegistry
 
-class BlockGateway(blockId: Int) extends BlockObsidian(blockId) {
+class BlockGateway(id: Int) extends BlockObsidian(id)
+	with Immobile
+	with GatewayTile
+{
 	setHardness(50.0F)
     setResistance(2000.0F)
     setStepSound(Block.soundStoneFootstep)
@@ -18,19 +22,14 @@ class BlockGateway(blockId: Int) extends BlockObsidian(blockId) {
     setTextureName("gateway:gateway")
     setCreativeTab(CreativeTabs.tabRedstone)
     
-	override def onBlockActivated(world: World, x: Int, y: Int, z: Int, player: EntityPlayer, w: Int, touchX: Float, touchY: Float, touchZ: Float): Boolean = {
-	    if (world.isRemote)
-	        return true
-	        
-	    findGatewayAndDo(world, x, y, z) {
-	        case (x, y, z, w) =>
-	        	System.out.println(s"Found gateway at $x, $y, $z, $w")
-	        	Teleporter.teleport(player, x.toDouble + 0.5, y.toDouble + 1.0, z.toDouble + 0.5, w)
-	    }
-	    true
+    private val PILLAR_HEIGHT = 3
+    
+	override def onBlockAdded(world: World, x: Int, y: Int, z: Int) {
+	    for (y1 <- y + 1 to y + PILLAR_HEIGHT)
+	        world.setBlock(x, y1, z, Blocks.portal.blockID)
 	}
-	
-	override def onEntityWalking(world: World, x: Int, y: Int, z: Int, entity: Entity) {
+	// Teleports specified entity to other gateway
+	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) {
 	    if (!world.isRemote)
 	    	findGatewayAndDo(world, x, y, z) {
 	        case (x1, y1, z1, w1) =>
@@ -51,7 +50,7 @@ class BlockGateway(blockId: Int) extends BlockObsidian(blockId) {
 	}
 	
 	private def findGateway(world: IBlockAccess, x: Int, y: Int, z: Int) =
-	    findBlock(world, x, y, z, 8, (wp, xp, yp, zp) => { wp.getBlockId(xp, yp, zp) == blockId } )
+	    findBlock(world, x, y, z, 8, (wp, xp, yp, zp) => { wp.getBlockId(xp, yp, zp) == blockID } )
 	
 	private def findBlock(world: IBlockAccess, x: Int, y: Int, z: Int, eps: Int, pred: (IBlockAccess, Int, Int, Int) => Boolean): Option[(Int, Int, Int)] = {
 	    for {
