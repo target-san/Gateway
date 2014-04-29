@@ -31,4 +31,7 @@ class BlockPortal(id: Int) extends Block(id, Material.portal)
         		.asInstanceOf[GatewayTile]
         		.teleportEntity(world, x, y - 1, z, entity)
     }
+    
+    override def renderAsNormalBlock = false
+    override def isOpaqueCube = false
 }
