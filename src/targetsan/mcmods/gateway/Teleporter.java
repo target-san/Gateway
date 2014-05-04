@@ -36,12 +36,13 @@ public class Teleporter {
 
 		if (rider != null) {
 			rider.mountEntity(null);
-			rider = transferEntityWithRider(rider, x, y, z, world);
 		}
 
 		entity = transferEntity(entity, x, y, z, world);
 
 		if (rider != null) {
+			rider = transferEntityWithRider(rider, x, y, z, world);
+			entity.worldObj.updateEntityWithOptionalForce(entity, true);
 			rider.mountEntity(entity);
 		}
 
@@ -49,82 +50,77 @@ public class Teleporter {
 	}
 
 	private static Entity transferEntity(Entity entity, double x, double y, double z, WorldServer world) {
-		return entity.worldObj.provider.dimensionId == world.provider.dimensionId
-			? transferEntityWithinDimension(entity, x, y, z)
-			: transferEntityToDimension(entity, x, y, z, (WorldServer) entity.worldObj, world);
+		if (entity == null)
+			return null;
+		
+		if (entity.worldObj.provider.dimensionId != world.provider.dimensionId)
+			entity = moveToDimension(entity, world); 
+		entity = moveWithinDimension(entity, x, y, z);
+		entity.worldObj.updateEntityWithOptionalForce(entity, false);
+		return entity;
 	}
 	
-	private static NBTTagCompound removeFromWorld(Entity entity) {
+	private static Entity moveToDimension(Entity entity, WorldServer toWorld) {
+		WorldServer fromWorld = (WorldServer)entity.worldObj;
+		
+		return entity instanceof EntityPlayer
+			? movePlayerToDimension((EntityPlayerMP)entity, toWorld)
+			: moveEntityToDimension(entity, toWorld);
+	}
+
+	private static Entity moveEntityToDimension(Entity entity, WorldServer toWorld) {
 		NBTTagCompound tag = new NBTTagCompound();
 		entity.writeToNBTOptional(tag);
-		/*
+		
 		int chunkX = entity.chunkCoordX;
 		int chunkZ = entity.chunkCoordZ;
-		WorldServer world = (WorldServer)entity.worldObj;
+		WorldServer fromWorld = (WorldServer)entity.worldObj;
 
-		if (entity.addedToChunk && world.getChunkProvider().chunkExists(chunkX, chunkZ)) {
-			Chunk chunk = world.getChunkFromChunkCoords(chunkX, chunkZ);
+		if (entity.addedToChunk && fromWorld.getChunkProvider().chunkExists(chunkX, chunkZ)) {
+			Chunk chunk = fromWorld.getChunkFromChunkCoords(chunkX, chunkZ);
 			chunk.removeEntity(entity);
 			chunk.isModified = true;
 		}
 
-		world.loadedEntityList.remove(entity);
-		world.onEntityRemoved(entity);
-		*/
+		//world.loadedEntityList.remove(entity);
+		fromWorld.onEntityRemoved(entity);
 		entity.isDead = true;
 		
-		return tag;
-	}
-
-	private static Entity transferEntityToDimension(Entity entity, double x, double y, double z, WorldServer exitingWorld, WorldServer enteringWorld) {
-		if (entity == null)
-			return null;
-
-		if (entity instanceof EntityPlayer)
-			return transferPlayerToDimension((EntityPlayerMP)entity, x, y, z, exitingWorld, enteringWorld);
-
-		NBTTagCompound tag = removeFromWorld(entity);
-		entity = EntityList.createEntityFromNBT(tag, enteringWorld);
+		entity = EntityList.createEntityFromNBT(tag, toWorld);
 
 		if (entity != null) {
-			setLocation(entity, x, y, z);
 			entity.forceSpawn = true;
-			enteringWorld.spawnEntityInWorld(entity);
-			entity.setWorld(enteringWorld);
+			toWorld.spawnEntityInWorld(entity);
+			entity.setWorld(toWorld);
 		}
-
-		exitingWorld.resetUpdateEntityTick();
-		enteringWorld.resetUpdateEntityTick();
-
+		
 		return entity;
 	}
 
-	private static Entity transferPlayerToDimension(EntityPlayerMP player, double x, double y, double z, WorldServer exitingWorld, WorldServer enteringWorld) {
+	private static Entity movePlayerToDimension(EntityPlayerMP player, WorldServer toWorld) {
 		MinecraftServer server = player.mcServer;
 		ServerConfigurationManager config = server.getConfigurationManager();
+		WorldServer fromWorld = (WorldServer) player.worldObj;
 
 		player.closeScreen();
-		player.dimension = enteringWorld.provider.dimensionId;
+		player.dimension = toWorld.provider.dimensionId;
 		player.playerNetServerHandler
 				.sendPacketToPlayer(new Packet9Respawn(player.dimension,
 						(byte) player.worldObj.difficultySetting,
-						enteringWorld.getWorldInfo().getTerrainType(),
-						enteringWorld.getHeight(),
+						toWorld.getWorldInfo().getTerrainType(),
+						toWorld.getHeight(),
 						player.theItemInWorldManager.getGameType()));
 
-		exitingWorld.removePlayerEntityDangerously(player);
+		fromWorld.removePlayerEntityDangerously(player);
 		player.isDead = false;
-		exitingWorld.getPlayerManager().removePlayer(player);
-		setLocation(player, x, y, z);
+		fromWorld.getPlayerManager().removePlayer(player);
 
-		enteringWorld.getPlayerManager().addPlayer(player);
-		enteringWorld.spawnEntityInWorld(player);
-		player.setWorld(enteringWorld);
+		toWorld.getPlayerManager().addPlayer(player);
+		toWorld.spawnEntityInWorld(player);
+		player.setWorld(toWorld);
+		player.theItemInWorldManager.setWorld(toWorld);
 
-		player.playerNetServerHandler.setPlayerLocation(x, y, z, player.rotationYaw, player.rotationPitch);
-		player.theItemInWorldManager.setWorld(enteringWorld);
-
-		config.updateTimeAndWeatherForPlayer(player, enteringWorld);
+		config.updateTimeAndWeatherForPlayer(player, toWorld);
 		config.syncPlayerInventory(player);
 
 		for (Object potion: player.getActivePotionEffects())
@@ -143,36 +139,12 @@ public class Teleporter {
 		return player;
 	}
 	
-	private static void setLocation(Entity entity, double x, double y, double z) {
-		entity.setLocationAndAngles(x, y, z, entity.rotationYaw, entity.rotationPitch);
-	}
-	
-	private static Entity transferEntityWithinDimension(Entity entity, double x, double y, double z) {
-		if (entity == null)
-			return null;
-
+	private static Entity moveWithinDimension(Entity entity, double x, double y, double z) {
 		if (entity instanceof EntityPlayer)
-			return transferPlayerWithinDimension((EntityPlayerMP)entity, x, y, z);
-
-		WorldServer world = (WorldServer) entity.worldObj;
-
-		NBTTagCompound tag = removeFromWorld(entity);
-		entity = EntityList.createEntityFromNBT(tag, world);
-
-		if (entity != null) {
-			setLocation(entity, x, y, z);
-			entity.forceSpawn = true;
-			world.spawnEntityInWorld(entity);
-			entity.setWorld(world);
-		}
-
-		world.resetUpdateEntityTick();
+			((EntityPlayerMP)entity).setPositionAndUpdate(x, y, z);
+		else
+			entity.setLocationAndAngles(x, y, z, entity.rotationYaw, entity.rotationPitch);
+		
 		return entity;
-	}
-	
-	private static Entity transferPlayerWithinDimension(EntityPlayerMP player, double x, double y, double z) {
-		player.setPositionAndUpdate(x, y, z);
-		player.worldObj.updateEntityWithOptionalForce(player, false);
-		return player;
 	}
 }
