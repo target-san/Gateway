@@ -32,6 +32,9 @@ public class Teleporter {
 	}
 
 	private static Entity transferEntityWithRider(Entity entity, double x, double y, double z, WorldServer world) {
+		if (entity == null)
+			return null;
+		
 		if (entity.ridingEntity != null)
 			return transferEntityWithRider(entity.ridingEntity, x, y, z, world);
 
@@ -53,12 +56,12 @@ public class Teleporter {
 	}
 
 	private static Entity transferEntity(Entity entity, double x, double y, double z, WorldServer world) {
-		if (entity == null)
-			return null;
-		
 		if (entity.worldObj.provider.dimensionId != world.provider.dimensionId)
-			entity = moveToDimension(entity, world); 
+			entity = moveToDimension(entity, world);
+
+		if (entity == null) return null;
 		entity = moveWithinDimension(entity, x, y, z);
+		if (entity == null) return null;
 		entity.worldObj.updateEntityWithOptionalForce(entity, false);
 		
 		return entity;
@@ -89,12 +92,13 @@ public class Teleporter {
 		entity.isDead = true;
 		
 		entity = EntityList.createEntityFromNBT(tag, toWorld);
-
-		if (entity != null) {
-			entity.forceSpawn = true;
-			toWorld.spawnEntityInWorld(entity);
-			entity.setWorld(toWorld);
-		}
+		
+		if (entity == null)
+			return null;
+		
+		entity.forceSpawn = true;
+		toWorld.spawnEntityInWorld(entity);
+		entity.setWorld(toWorld);
 		
 		return entity;
 	}
@@ -107,11 +111,12 @@ public class Teleporter {
 		player.closeScreen();
 		player.dimension = toWorld.provider.dimensionId;
 		player.playerNetServerHandler
-				.sendPacketToPlayer(new Packet9Respawn(player.dimension,
-						(byte) player.worldObj.difficultySetting,
-						toWorld.getWorldInfo().getTerrainType(),
-						toWorld.getHeight(),
-						player.theItemInWorldManager.getGameType()));
+			.sendPacketToPlayer(new Packet9Respawn(player.dimension,
+				(byte) player.worldObj.difficultySetting,
+				toWorld.getWorldInfo().getTerrainType(),
+				toWorld.getHeight(),
+				player.theItemInWorldManager.getGameType()
+			));
 
 		fromWorld.removePlayerEntityDangerously(player);
 		player.isDead = false;
