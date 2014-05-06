@@ -43,13 +43,12 @@ public class Teleporter {
 
 		if (rider != null) {
 			rider.mountEntity(null);
+			rider = transferEntityWithRider(rider, x, y, z, world);
 		}
 
 		entity = transferEntity(entity, x, y, z, world);
 
 		if (rider != null) {
-			rider = transferEntityWithRider(rider, x, y, z, world);
-			entity.worldObj.updateEntityWithOptionalForce(entity, true);
 			rider.mountEntity(entity);
 		}
 
@@ -59,10 +58,7 @@ public class Teleporter {
 	private static Entity transferEntity(Entity entity, double x, double y, double z, WorldServer world) {
 		if (entity.worldObj.provider.dimensionId != world.provider.dimensionId)
 			entity = moveToDimension(entity, world);
-		if (entity == null) return null;
 		entity = moveWithinDimension(entity, x, y, z);
-		if (entity == null) return null;
-		entity.worldObj.updateEntityWithOptionalForce(entity, false);
 		
 		return entity;
 	}
@@ -77,11 +73,7 @@ public class Teleporter {
 		NBTTagCompound tag = new NBTTagCompound();
 		entity.writeToNBTOptional(tag);
 		
-		WorldServer fromWorld = (WorldServer)entity.worldObj;
-		removeFromChunk(entity);
-		fromWorld.onEntityRemoved(entity);
-		entity.isDead = true;
-		
+		entity.worldObj.removeEntity(entity);
 		entity = EntityList.createEntityFromNBT(tag, toWorld);
 		
 		if (entity == null)
@@ -111,11 +103,10 @@ public class Teleporter {
 
 		// removePlayerEntityDangerously cannot be used here -
 		// it would break loadedEntitiesList and thus unapplicable inside updateEntities
-		removeFromChunk(player);
 		fromWorld.removeEntity(player);
 		fromWorld.unloadEntities(Arrays.asList(player));
-		player.isDead = false;
 		fromWorld.getPlayerManager().removePlayer(player);
+		player.isDead = false;
 
 		toWorld.getPlayerManager().addPlayer(player);
 		toWorld.spawnEntityInWorld(player);
@@ -148,17 +139,5 @@ public class Teleporter {
 			entity.setLocationAndAngles(x, y, z, entity.rotationYaw, entity.rotationPitch);
 		
 		return entity;
-	}
-	
-	private static void removeFromChunk(Entity entity) {
-		int chunkX = entity.chunkCoordX;
-		int chunkZ = entity.chunkCoordZ;
-		WorldServer world = (WorldServer)entity.worldObj;
-
-		if (entity.addedToChunk && world.getChunkProvider().chunkExists(chunkX, chunkZ)) {
-			Chunk chunk = world.getChunkFromChunkCoords(chunkX, chunkZ);
-			chunk.removeEntity(entity);
-			chunk.isModified = true;
-		}
 	}
 }
