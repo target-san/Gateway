@@ -33,7 +33,7 @@ public class Teleporter {
 	}
 
 	private static Entity transferEntityWithRider(Entity entity, double x, double y, double z, WorldServer world) {
-		if (entity == null)
+		if (entity == null || entity.isDead)
 			return null;
 		
 		if (entity.ridingEntity != null)
@@ -43,12 +43,12 @@ public class Teleporter {
 
 		if (rider != null) {
 			rider.mountEntity(null);
-			rider = transferEntityWithRider(rider, x, y, z, world);
 		}
 
 		entity = transferEntity(entity, x, y, z, world);
 
 		if (rider != null) {
+			rider = transferEntityWithRider(rider, x, y, z, world);
 			entity.worldObj.updateEntityWithOptionalForce(entity, true);
 			rider.mountEntity(entity);
 		}
@@ -59,7 +59,6 @@ public class Teleporter {
 	private static Entity transferEntity(Entity entity, double x, double y, double z, WorldServer world) {
 		if (entity.worldObj.provider.dimensionId != world.provider.dimensionId)
 			entity = moveToDimension(entity, world);
-
 		if (entity == null) return null;
 		entity = moveWithinDimension(entity, x, y, z);
 		if (entity == null) return null;
