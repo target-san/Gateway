@@ -43,13 +43,15 @@ public class Teleporter {
 
 		if (rider != null) {
 			rider.mountEntity(null);
-			rider = transferEntityWithRider(rider, x, y, z, world);
 		}
 
 		entity = transferEntity(entity, x, y, z, world);
 
 		if (rider != null) {
+			rider = transferEntityWithRider(rider, x, y, z, world);
 			rider.mountEntity(entity);
+			if (rider instanceof EntityPlayer)
+				rider.worldObj.updateEntity(rider);
 		}
 
 		return entity;
