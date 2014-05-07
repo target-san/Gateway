@@ -1,7 +1,10 @@
 /**
- * This file originates from https://github.com/ShadedDimension/enhanced-portals/blob/c34864df76a95465c6f01383182c6c3a363b6acb/src/main/java/uk/co/shadeddimensions/ep3/portal/EntityManager.java
- * Represents ShadedDimension's entity teleportation algorithm
- * All side things like biometrics are dropped, it only moves _any_ entity to specified dimension
+ * File origins:
+ * https://github.com/ShadedDimension/enhanced-portals/blob/c34864df76a95465c6f01383182c6c3a363b6acb/src/main/java/uk/co/shadeddimensions/ep3/portal/EntityManager.java
+ * https://github.com/StevenRS11/DimDoors/blob/c980c797e8028a3398eed830d8ef08f4b9e6240a/src/main/java/StevenDimDoors/mod_pocketDim/core/DDTeleporter.java
+ * 
+ * Represents ShadedDimension's entity teleportation algorithm, with some fixes and ideas from StevenRS code
+ * All side things like biometrics are dropped, it only moves _any_ entity to specified dimension at specified location
  * Mount/rider pairs also supported 
  */
 package targetsan.mcmods.gateway;
