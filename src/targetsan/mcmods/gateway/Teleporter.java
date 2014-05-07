@@ -61,7 +61,7 @@ public class Teleporter {
 		if (entity.worldObj.provider.dimensionId != world.provider.dimensionId)
 			entity = moveToDimension(entity, world);
 		entity = moveWithinDimension(entity, x, y, z);
-		
+		entity.worldObj.updateEntityWithOptionalForce(entity, false);
 		return entity;
 	}
 	
