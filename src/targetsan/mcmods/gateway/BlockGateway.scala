@@ -11,24 +11,36 @@ import net.minecraft.entity.EntityList
 import net.minecraft.entity.player.EntityPlayer
 import cpw.mods.fml.common.registry.GameRegistry
 import java.util.Random
+import net.minecraft.client.renderer.texture.IconRegister
+import net.minecraft.util.Icon
 
-class BlockGateway(id: Int) extends BlockObsidian(id)
+class BlockGateway(id: Int) extends Block(id, Material.rock)
 	with Immobile
 	with GatewayTile
 {
-	setHardness(50.0F)
-    setResistance(2000.0F)
+    disableStats()
+	setBlockUnbreakable()
+    setResistance(6000000.0F)
     setStepSound(Block.soundStoneFootstep)
-    setCreativeTab(CreativeTabs.tabRedstone)
     setUnlocalizedName("gateway")
-    setTextureName("gateway:gateway")
     
     private val PILLAR_HEIGHT = 3
+    
+    private var activeSideIcon: Icon = null
     
 	override def onBlockAdded(world: World, x: Int, y: Int, z: Int) {
 	    for (y1 <- y + 1 to y + PILLAR_HEIGHT)
 	        world.setBlock(x, y1, z, Assets.blockPortal.blockID)
 	}
+    
+    override def registerIcons(icons: IconRegister) {
+        blockIcon = icons.registerIcon("gateway:gateway")
+        activeSideIcon = icons.registerIcon("gateway:gateway_a")
+    }
+    
+    override def getIcon(side: Int, meta: Int) =
+        if (side == 1) activeSideIcon
+        else blockIcon
 	
 	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: Random) {
 	    for (i <- 0 until 8)

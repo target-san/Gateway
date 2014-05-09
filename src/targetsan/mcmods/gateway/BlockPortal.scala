@@ -10,9 +10,10 @@ class BlockPortal(id: Int) extends Block(id, Material.portal)
 	with Intangible
 	with GatewayTile
 {
+    disableStats()
     setBlockBounds(0f, 0f, 0f, 0f, 0f, 0f)
-   	setHardness(1000000.0F)
-    setResistance(1000000.0F)
+   	setBlockUnbreakable()
+    setResistance(6000000.0F)
     setUnlocalizedName("portal-pillar")
     
     override def onNeighborBlockChange(world: World, x: Int, y: Int, z: Int, id: Int) {
@@ -25,11 +26,10 @@ class BlockPortal(id: Int) extends Block(id, Material.portal)
         teleportEntity(world, x, y, z, entity)
     
     override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) {
-        if (!world.isRemote)
-        	Block
-        		.blocksList(world.getBlockId(x, y - 1, z))
-        		.asInstanceOf[GatewayTile]
-        		.teleportEntity(world, x, y - 1, z, entity)
+    	Block
+    		.blocksList(world.getBlockId(x, y - 1, z))
+    		.asInstanceOf[GatewayTile]
+    		.teleportEntity(world, x, y - 1, z, entity)
     }
     
     override def renderAsNormalBlock = false

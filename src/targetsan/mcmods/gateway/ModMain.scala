@@ -14,6 +14,7 @@ import net.minecraft.item.ItemBlock
 object ModMain {
     private val BLOCK_GATEWAY_ID = 1024
     private val BLOCK_PORTAL_ID = BLOCK_GATEWAY_ID + 1
+    private val BLOCK_KEYSTONE_ID = BLOCK_PORTAL_ID + 1
     
     private val ITEM_GATE_KEY_ID = 4096
     
