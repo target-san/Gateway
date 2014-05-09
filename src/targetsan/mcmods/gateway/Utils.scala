@@ -7,12 +7,6 @@ import net.minecraft.util.AxisAlignedBB
 import net.minecraft.world.World
 import net.minecraft.entity.Entity
 
-object Assets {
-    var blockGateway: BlockGateway = null
-    var blockPortal: BlockPortal = null
-    
-    var itemGateIgniter: ItemGateIgniter = null
-}
 // Block can't be moved by pistons
 trait Immobile extends Block {
     override def getMobilityFlag = 2 // Block can't be moved by piston
