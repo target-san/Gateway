@@ -29,7 +29,7 @@ trait Ignitable extends Block {
 	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: Random) {
 	    if (world.getBlockMetadata(x, y, z) != 0)
 	    	for (i <- 0 until 4)
-	    		world.spawnParticle("largesmoke", x + random.nextDouble(), y + 1.0, z + random.nextDouble(), 0.0, 1.0, 0.0)
+	    		world.spawnParticle("largesmoke", x + random.nextDouble(), y + 1.0, z + random.nextDouble(), 0.0, 0.0, 0.0)
 	}
 	
 	override def updateTick(world: World, x: Int, y: Int, z: Int, random: Random) {

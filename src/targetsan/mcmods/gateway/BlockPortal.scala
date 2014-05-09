@@ -26,10 +26,9 @@ class BlockPortal(id: Int) extends Block(id, Material.portal)
         teleportEntity(world, x, y, z, entity)
     
     override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) {
-    	Block
-    		.blocksList(world.getBlockId(x, y - 1, z))
-    		.asInstanceOf[GatewayTile]
-    		.teleportEntity(world, x, y - 1, z, entity)
+        val block = Block.blocksList(world.getBlockId(x, y - 1, z))
+        if (block.isInstanceOf[GatewayTile]) 
+        	block.asInstanceOf[GatewayTile].teleportEntity(world, x, y - 1, z, entity)
     }
     
     override def renderAsNormalBlock = false

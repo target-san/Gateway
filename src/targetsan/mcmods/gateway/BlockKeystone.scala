@@ -18,5 +18,8 @@ class BlockKeystone(id: Int) extends Block(id, Material.rock)
     setCreativeTab(CreativeTabs.tabRedstone)
 
     // Ignitable
-    override protected def doIgniteAction(world: World, x: Int, y: Int, z: Int) { }
+    override protected def doIgniteAction(world: World, x: Int, y: Int, z: Int) {
+        world.setBlock(x, y, z, Assets.blockGateway.blockID, 0, 3)
+        world.notifyBlockChange(x, y, z, Assets.blockGateway.blockID)
+    }
 }

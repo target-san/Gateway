@@ -50,7 +50,10 @@ class BlockGateway(id: Int) extends Block(id, Material.rock)
 	}
     
     // Ignitable
-    override protected def doIgniteAction(world: World, x: Int, y: Int, z: Int) { }
+    override protected def doIgniteAction(world: World, x: Int, y: Int, z: Int) {
+        world.setBlock(x, y, z, Assets.blockKeystone.blockID, 0, 3)
+        world.notifyBlockChange(x, y, z, Assets.blockKeystone.blockID)
+    }
 	// Teleports specified entity to other gateway
 	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) {
 	    if (!world.isRemote)
