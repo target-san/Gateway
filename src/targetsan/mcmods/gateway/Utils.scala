@@ -7,9 +7,11 @@ import net.minecraft.util.AxisAlignedBB
 import net.minecraft.world.World
 import net.minecraft.entity.Entity
 
-object Blocks {
-    var gateway: BlockGateway = null
-    var portal: BlockPortal = null
+object Assets {
+    var blockGateway: BlockGateway = null
+    var blockPortal: BlockPortal = null
+    
+    var itemGateIgniter: ItemGateIgniter = null
 }
 // Block can't be moved by pistons
 trait Immobile extends Block {

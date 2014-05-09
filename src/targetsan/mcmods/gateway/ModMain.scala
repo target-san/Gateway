@@ -14,8 +14,12 @@ import net.minecraft.item.ItemBlock
 object ModMain {
     private val BLOCK_GATEWAY_ID = 1024
     private val BLOCK_PORTAL_ID = BLOCK_GATEWAY_ID + 1
-    private var gatewayId: Int = 0
-    private var portalId: Int = 0
+    
+    private val ITEM_GATE_KEY_ID = 4096
+    
+    private var blockGatewayId: Int = 0
+    private var blockPortalId: Int = 0
+    private var itemGateIgniterId: Int = 0
     
     @Mod.EventHandler
 	def preInit(event: FMLPreInitializationEvent) {
@@ -23,20 +27,25 @@ object ModMain {
         val config = new Configuration(configFile)
         config.load()
         
-        gatewayId = config.getBlock("gateway", BLOCK_GATEWAY_ID).getInt()
-        portalId = config.getBlock("portal", BLOCK_PORTAL_ID).getInt()
+        blockGatewayId = config.getBlock("gateway", BLOCK_GATEWAY_ID).getInt()
+        blockPortalId = config.getBlock("portal", BLOCK_PORTAL_ID).getInt()
+        itemGateIgniterId = config.getItem("gatekey", ITEM_GATE_KEY_ID).getInt()
         
         config.save()
     }
     @Mod.EventHandler
 	def init(event: FMLInitializationEvent) {
-        Blocks.portal = new BlockPortal(portalId)
-        GameRegistry.registerBlock(Blocks.portal, classOf[ItemBlock], "portal", "Gateway")
-        LanguageRegistry.addName(Blocks.portal, "Gateway portal pillar")
+        Assets.blockPortal = new BlockPortal(blockPortalId)
+        GameRegistry.registerBlock(Assets.blockPortal, classOf[ItemBlock], "portal", "Gateway")
+        LanguageRegistry.addName(Assets.blockPortal, "Gateway portal pillar")
         
-        Blocks.gateway = new BlockGateway(gatewayId)
-        GameRegistry.registerBlock(Blocks.gateway, classOf[ItemBlock], "gateway", "Gateway")
-        LanguageRegistry.addName(Blocks.gateway, "Gateway")
+        Assets.blockGateway = new BlockGateway(blockGatewayId)
+        GameRegistry.registerBlock(Assets.blockGateway, classOf[ItemBlock], "gateway", "Gateway")
+        LanguageRegistry.addName(Assets.blockGateway, "Gateway")
+        
+        Assets.itemGateIgniter = new ItemGateIgniter(itemGateIgniterId)
+        GameRegistry.registerItem(Assets.itemGateIgniter, "gatekey", "Gateway")
+        LanguageRegistry.addName(Assets.itemGateIgniter, "Gateway Igniter")
     }
     @Mod.EventHandler
 	def postInit(event: FMLPostInitializationEvent) { }

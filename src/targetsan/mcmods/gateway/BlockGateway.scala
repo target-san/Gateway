@@ -19,15 +19,15 @@ class BlockGateway(id: Int) extends BlockObsidian(id)
 	setHardness(50.0F)
     setResistance(2000.0F)
     setStepSound(Block.soundStoneFootstep)
+    setCreativeTab(CreativeTabs.tabRedstone)
     setUnlocalizedName("gateway")
     setTextureName("gateway:gateway")
-    setCreativeTab(CreativeTabs.tabRedstone)
     
     private val PILLAR_HEIGHT = 3
     
 	override def onBlockAdded(world: World, x: Int, y: Int, z: Int) {
 	    for (y1 <- y + 1 to y + PILLAR_HEIGHT)
-	        world.setBlock(x, y1, z, Blocks.portal.blockID)
+	        world.setBlock(x, y1, z, Assets.blockPortal.blockID)
 	}
 	
 	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: Random) {
