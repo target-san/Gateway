@@ -17,6 +17,7 @@ import net.minecraft.util.Icon
 class BlockGateway(id: Int) extends Block(id, Material.rock)
 	with Immobile
 	with GatewayTile
+	with Ignitable
 {
     disableStats()
 	setBlockUnbreakable()
@@ -43,9 +44,13 @@ class BlockGateway(id: Int) extends Block(id, Material.rock)
         else blockIcon
 	
 	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: Random) {
-	    for (i <- 0 until 8)
+        super.randomDisplayTick(world, x, y, z, random)
+	    for (i <- 0 until 4)
 	        world.spawnParticle("portal", x + random.nextDouble(), y + 1.0, z + random.nextDouble(), 0.0, 1.5, 0.0)
 	}
+    
+    // Ignitable
+    override protected def doIgniteAction(world: World, x: Int, y: Int, z: Int) { }
 	// Teleports specified entity to other gateway
 	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) {
 	    if (!world.isRemote)
