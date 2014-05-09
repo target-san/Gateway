@@ -51,6 +51,7 @@ object ModMain {
         
         Assets.blockGateway = new BlockGateway(blockGatewayId)
         GameRegistry.registerBlock(Assets.blockGateway, classOf[ItemBlock], "gateway", "Gateway")
+        GameRegistry.registerTileEntity(classOf[TileGateway], "TileGateway")
         LanguageRegistry.addName(Assets.blockGateway, "Gateway")
         
         Assets.itemGateIgniter = new ItemGateIgniter(itemGateIgniterId)
