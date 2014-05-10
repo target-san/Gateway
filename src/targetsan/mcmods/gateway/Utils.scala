@@ -55,3 +55,14 @@ trait Ignitable extends Block {
 	
 	protected def doIgniteAction(world: World, x: Int, y: Int, z: Int)
 }
+
+object BlockUtils {
+    def findBlocks(world: World, x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int, predicate: (World, Int, Int, Int) => Boolean) =
+        for {
+            x <- x1 to x2
+            y <- y1 to y2
+            z <- z1 to z2
+            if predicate(world, x, y, z)
+        }
+    		yield (x, y, z)
+}

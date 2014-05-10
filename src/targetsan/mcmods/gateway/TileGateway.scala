@@ -7,11 +7,18 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.world.IBlockAccess
 
 class TileGateway extends TileEntity {
-	def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) {
-	    if (!world.isRemote)
-	    	findGatewayAndDo(world, x, y, z) {
+	private val PILLAR_HEIGHT = 3
+    
+    def onCreate {
+	    for (y1 <- yCoord + 1 to yCoord + PILLAR_HEIGHT)
+	        worldObj.setBlock(xCoord, y1, zCoord, Assets.blockPortal.blockID)
+    }
+    
+	def teleportEntity(entity: Entity) {
+	    if (!worldObj.isRemote)
+	    	findGatewayAndDo(worldObj, xCoord, yCoord, zCoord) {
 	        case (x1, y1, z1, w1) =>
-	            val (destX, destY, destZ) = findExitPos(entity, x, y, z, x1, y1, z1)
+	            val (destX, destY, destZ) = findExitPos(entity, xCoord, yCoord, zCoord, x1, y1, z1)
 	            Teleporter.teleport(entity, destX, destY, destZ, w1)
 	    	}
 	}
@@ -27,19 +34,11 @@ class TileGateway extends TileEntity {
 	        func(x1, y1, z1, dim)
 	}
 	
-	private def findGateway(world: IBlockAccess, x: Int, y: Int, z: Int) =
-	    findBlock(world, x, y, z, 8, (wp, xp, yp, zp) => { wp.getBlockId(xp, yp, zp) == Assets.blockGateway.blockID } )
-	
-	private def findBlock(world: IBlockAccess, x: Int, y: Int, z: Int, eps: Int, pred: (IBlockAccess, Int, Int, Int) => Boolean): Option[(Int, Int, Int)] = {
-	    for {
-	        x1 <- x - eps to x + eps
-	        y1 <- y - eps to y + eps
-	        z1 <- z - eps to z + eps
-	    }
-	    if (pred(world, x1, y1, z1))
-	        return Some((x1, y1, z1))
-    	None
-	}
+	private def findGateway(world: World, x: Int, y: Int, z: Int) =
+	    BlockUtils.findBlocks(
+            world, x - 8, y - 8, z - 8, x + 8, y + 8, z + 8,
+            (wp, xp, yp, zp) => { wp.getBlockId(xp, yp, zp) == Assets.blockGateway.blockID }
+        ).headOption
 	
 	private def findExitPos(entity: Entity, x0: Int, y0: Int, z0: Int, x1: Int, y1: Int, z1: Int): (Double, Double, Double) = {
 	    val (entx, enty, entz) = (entity.posX - x0, entity.posY - y0, entity.posZ - z0)

@@ -26,13 +26,10 @@ class BlockGateway(id: Int) extends BlockContainer(id, Material.rock)
     setStepSound(Block.soundStoneFootstep)
     setUnlocalizedName("gateway")
     
-    private val PILLAR_HEIGHT = 3
-    
     private var activeSideIcon: Icon = null
     
 	override def onBlockAdded(world: World, x: Int, y: Int, z: Int) {
-	    for (y1 <- y + 1 to y + PILLAR_HEIGHT)
-	        world.setBlock(x, y1, z, Assets.blockPortal.blockID)
+        tile(world, x, y, z).onCreate
 	}
     
     override def registerIcons(icons: IconRegister) {
@@ -59,9 +56,9 @@ class BlockGateway(id: Int) extends BlockContainer(id, Material.rock)
     }
 	// Teleports specified entity to other gateway
 	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) {
-	    world
-	    	.getBlockTileEntity(x, y, z)
-	    	.asInstanceOf[TileGateway]
-			.teleportEntity(world, x, y, z, entity)
+	    tile(world, x, y, z).teleportEntity(entity)
 	}
+	
+	protected def tile(world: World, x: Int, y: Int, z: Int) =
+	    world.getBlockTileEntity(x, y, z).asInstanceOf[TileGateway]
 }
