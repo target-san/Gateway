@@ -48,6 +48,9 @@ class BlockGateway(id: Int) extends BlockContainer(id, Material.rock)
 	}
     
     override def createNewTileEntity(world: World) = new TileGateway
+    // This block doesn't drop in any way
+    override def idPicked(w: World, x: Int, y: Int, z: Int) = 0
+    override def idDropped(p1: Int, random: Random, p2: Int) = 0
     
     // Ignitable
     override protected def doIgniteAction(world: World, x: Int, y: Int, z: Int) {

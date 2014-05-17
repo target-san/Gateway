@@ -6,6 +6,7 @@ import net.minecraft.util.AxisAlignedBB
 import net.minecraft.world.World
 import net.minecraft.entity.Entity
 import java.util.Random
+import net.minecraft.server.MinecraftServer
 
 // Block can't be moved by pistons
 trait Immobile extends Block {
@@ -57,12 +58,38 @@ trait Ignitable extends Block {
 }
 
 object BlockUtils {
-    def findBlocks(world: World, x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int, predicate: (World, Int, Int, Int) => Boolean) =
+    def blockVolume(world: World, x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =
         for {
             x <- x1 to x2
             y <- y1 to y2
             z <- z1 to z2
-            if predicate(world, x, y, z)
         }
     		yield (x, y, z)
+	
+	def getBlock(world: World, x: Int, y: Int, z: Int) = Block.blocksList(world.getBlockId(x, y, z))
+	// Transforms block coordinates between worlds
+	def otherWorld(from: World, x: Int, y: Int, z: Int, to: World): (Int, Int, Int) = {
+		val factor = from.provider.getMovementFactor() / to.provider.getMovementFactor()
+		(Math.round(x * factor).toInt, y, Math.round(z * factor).toInt)
+	}
+}
+
+object GatewayUtils {
+	val NETHER_DIM_ID = -1
+	
+	def world(dim: Int) = MinecraftServer.getServer().worldServerForDimension(dim)
+	def nether = world(NETHER_DIM_ID)
+	
+	def placeExit(x: Int, y: Int, z: Int) = {
+		val w = nether
+		BlockUtils.blockVolume(w, x - 2, y, z - 2, x + 2, y, z + 2)
+			.foreach {
+				case (x, y, z) => w.setBlock(x, y, z, Block.obsidian.blockID)
+			}
+		BlockUtils.blockVolume(w, x - 2, y + 1, z - 2, x + 2, y + 4, z + 2)
+			.foreach {
+				case (x, y, z) => w.setBlock(x, y, z, Assets.blockPortal.blockID, Assets.blockPortal.SHIELD_META, 3)
+			}
+		w.setBlock(x, y, z, Assets.blockGateway.blockID)
+	}
 }

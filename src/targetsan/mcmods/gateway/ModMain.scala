@@ -86,4 +86,5 @@ object Assets {
     var blockPortal: BlockPortal = null
     
     var itemGateIgniter: ItemGateIgniter = null
+    
 }

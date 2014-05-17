@@ -5,40 +5,65 @@ import net.minecraft.entity.Entity
 import net.minecraft.world.World
 import net.minecraft.server.MinecraftServer
 import net.minecraft.world.IBlockAccess
+import net.minecraft.nbt.NBTTagCompound
 
 class TileGateway extends TileEntity {
 	private val PILLAR_HEIGHT = 3
+	
+	private var exitX = 0
+	private var exitY = 0
+	private var exitZ = 0
+	private var exitDim = 0
     
-    def onCreate {
+    def onCreate
+    {
 	    for (y1 <- yCoord + 1 to yCoord + PILLAR_HEIGHT)
-	        worldObj.setBlock(xCoord, y1, zCoord, Assets.blockPortal.blockID)
+	        worldObj.setBlock(xCoord, y1, zCoord, Assets.blockPortal.blockID, Assets.blockPortal.PORTAL_META, 3)
+	    if (worldObj.isRemote)
+	    	return
     }
+	
+	def setExit(x: Int, y: Int, z: Int, dim: Int)
+	{
+		exitX = x
+		exitY = y
+		exitZ = z
+		exitDim = dim
+	}
     
-	def teleportEntity(entity: Entity) {
-	    if (!worldObj.isRemote)
-	    	findGatewayAndDo(worldObj, xCoord, yCoord, zCoord) {
-	        case (x1, y1, z1, w1) =>
-	            val (destX, destY, destZ) = findExitPos(entity, xCoord, yCoord, zCoord, x1, y1, z1)
-	            Teleporter.teleport(entity, destX, destY, destZ, w1)
-	    	}
-	}
-	
-	private def findGatewayAndDo(world: World, x: Int, y: Int, z: Int)(func: (Int, Int, Int, Int) => Unit) {
-	    val dim = if (world.provider.dimensionId == DimensionManager.NETHER_ID) DimensionManager.OVERWORLD_ID else DimensionManager.NETHER_ID
-	    val remoteWorld = MinecraftServer.getServer.worldServerForDimension(dim)
-	    val factor = world.provider.getMovementFactor() / remoteWorld.provider.getMovementFactor()
-	    val destX = Math.round(x * factor).toInt
-	    val destZ = Math.round(z * factor).toInt
+	def teleportEntity(entity: Entity)
+	{
+	    if (worldObj.isRemote)
+	    	return
 	    
-	    for ((x1, y1, z1) <- findGateway(remoteWorld, destX, y, destZ))
-	        func(x1, y1, z1, dim)
+	    val exitWorld = GatewayUtils.world(exitDim)
+	    
+	    val exitTile = exitWorld.getBlockTileEntity(exitX, exitY, exitZ)
+	    if (exitTile == null || !exitTile.isInstanceOf[TileGateway])
+	    	return
+	    	
+    	val (destX, destY, destZ) = findExitPos(entity, xCoord, yCoord, zCoord, exitX, exitY, exitZ)
+	    Teleporter.teleport(entity, destX, destY, destZ, exitDim)
 	}
 	
-	private def findGateway(world: World, x: Int, y: Int, z: Int) =
-	    BlockUtils.findBlocks(
-            world, x - 8, y - 8, z - 8, x + 8, y + 8, z + 8,
-            (wp, xp, yp, zp) => { wp.getBlockId(xp, yp, zp) == Assets.blockGateway.blockID }
-        ).headOption
+	// NBT
+	override def readFromNBT(tag: NBTTagCompound)
+	{
+		if (tag == null)
+			return
+		val pos = tag.getIntArray("exitPos")
+		exitX = pos(0)
+		exitY = pos(1)
+		exitZ = pos(2)
+		exitDim = pos(3)
+	}
+	
+	override def writeToNBT(tag: NBTTagCompound)
+	{
+		if (tag == null)
+			return
+		tag.setIntArray("exitPos", Array(exitX, exitY, exitZ, exitDim))
+	}
 	
 	private def findExitPos(entity: Entity, x0: Int, y0: Int, z0: Int, x1: Int, y1: Int, z1: Int): (Double, Double, Double) = {
 	    val (entx, enty, entz) = (entity.posX - x0, entity.posY - y0, entity.posZ - z0)
