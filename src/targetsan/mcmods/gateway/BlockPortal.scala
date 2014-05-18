@@ -37,7 +37,6 @@ class BlockPortal(id: Int) extends Block(id, Material.portal)
         	block.asInstanceOf[GatewayTile].teleportEntity(world, x, y - 1, z, entity)
     }
     
-    override def isAirBlock(w: World, x: Int, y: Int, z: Int) = w.getBlockMetadata(x, y, z) == SHIELD_META
     override def isBlockReplaceable(w: World, x: Int, y: Int, z: Int) = w.getBlockMetadata(x, y, z) == SHIELD_META
 
     override def renderAsNormalBlock = false

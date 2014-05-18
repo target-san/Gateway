@@ -24,7 +24,6 @@ object ModMain {
     private var blockKeystoneId: Int = 0
     private var blockGatewayId: Int = 0
     private var blockPortalId: Int = 0
-    private var itemGateIgniterId: Int = 0
     
     @Mod.EventHandler
 	def preInit(event: FMLPreInitializationEvent) {
@@ -35,7 +34,6 @@ object ModMain {
         blockKeystoneId = config.getBlock("keystone", BLOCK_KEYSTONE_ID).getInt()
         blockGatewayId = config.getBlock("gateway", BLOCK_GATEWAY_ID).getInt()
         blockPortalId = config.getBlock("portal", BLOCK_PORTAL_ID).getInt()
-        itemGateIgniterId = config.getItem("gatekey", ITEM_GATE_KEY_ID).getInt()
         
         config.save()
     }
@@ -53,10 +51,6 @@ object ModMain {
         GameRegistry.registerBlock(Assets.blockGateway, classOf[ItemBlock], "gateway", "Gateway")
         GameRegistry.registerTileEntity(classOf[TileGateway], "TileGateway")
         LanguageRegistry.addName(Assets.blockGateway, "Gateway")
-        
-        Assets.itemGateIgniter = new ItemGateIgniter(itemGateIgniterId)
-        GameRegistry.registerItem(Assets.itemGateIgniter, "gatekey", "Gateway")
-        LanguageRegistry.addName(Assets.itemGateIgniter, "Gateway Igniter")
     }
     @Mod.EventHandler
 	def postInit(event: FMLPostInitializationEvent) {
@@ -68,15 +62,6 @@ object ModMain {
             'i': Character, Item.ingotIron,
             'g': Character, Block.glass
         )
-        GameRegistry.addRecipe(new ItemStack(Assets.itemGateIgniter),
-            "r f",
-            "nen",
-            "nnn",
-            'r': Character, Item.redstone,
-            'f': Character, Item.flint,
-            'n': Character, Item.goldNugget,
-            'e': Character, Item.enderPearl
-		)
     }
 }
 
@@ -84,7 +69,4 @@ object Assets {
     var blockKeystone: BlockKeystone = null
     var blockGateway: BlockGateway = null
     var blockPortal: BlockPortal = null
-    
-    var itemGateIgniter: ItemGateIgniter = null
-    
 }

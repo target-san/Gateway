@@ -6,35 +6,45 @@ import net.minecraft.world.World
 import net.minecraft.server.MinecraftServer
 import net.minecraft.world.IBlockAccess
 import net.minecraft.nbt.NBTTagCompound
+import net.minecraft.entity.player.EntityPlayer
 
-class TileGateway extends TileEntity {
+class TileGateway extends TileEntity
+{
 	private val PILLAR_HEIGHT = 3
 	
 	private var exitX = 0
 	private var exitY = 0
 	private var exitZ = 0
 	private var exitDim = 0
+	private var owner = ""
     
     def onCreate
     {
 	    for (y1 <- yCoord + 1 to yCoord + PILLAR_HEIGHT)
 	        worldObj.setBlock(xCoord, y1, zCoord, Assets.blockPortal.blockID, Assets.blockPortal.PORTAL_META, 3)
-	    if (worldObj.isRemote)
-	    	return
     }
 	
-	def setExit(x: Int, y: Int, z: Int, dim: Int)
+	def setGatewayInfo(x: Int, y: Int, z: Int, dim: Int, player: EntityPlayer)
 	{
+		if (!owner.isEmpty()) // owner and other params are set only once
+			throw new IllegalStateException("Gateway parameters are set only once")
 		exitX = x
 		exitY = y
 		exitZ = z
 		exitDim = dim
+		owner = player.username
+		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
+		System.out.println(s"Set params: ($exitX, $exitY, $exitZ, $exitDim) @ $owner")
 	}
     
 	def teleportEntity(entity: Entity)
 	{
 	    if (worldObj.isRemote)
 	    	return
+	    
+	    if (owner.isEmpty)
+	    	return
+	    	//throw new IllegalStateException(s"Gateway at (${xCoord}, ${yCoord}, ${zCoord}, ${worldObj.provider.dimensionId}) isn't initialized and thus cannot teleport")
 	    
 	    val exitWorld = GatewayUtils.world(exitDim)
 	    
@@ -56,13 +66,17 @@ class TileGateway extends TileEntity {
 		exitY = pos(1)
 		exitZ = pos(2)
 		exitDim = pos(3)
+		owner = tag.getString("owner")
+		System.out.println(s"Read params from NBT: ($exitX, $exitY, $exitZ, $exitDim) @ $owner")
 	}
 	
 	override def writeToNBT(tag: NBTTagCompound)
 	{
 		if (tag == null)
 			return
+		System.out.println(s"Stored params to NBT: ($exitX, $exitY, $exitZ, $exitDim) @ $owner")
 		tag.setIntArray("exitPos", Array(exitX, exitY, exitZ, exitDim))
+		tag.setString("owner", owner)
 	}
 	
 	private def findExitPos(entity: Entity, x0: Int, y0: Int, z0: Int, x1: Int, y1: Int, z1: Int): (Double, Double, Double) = {

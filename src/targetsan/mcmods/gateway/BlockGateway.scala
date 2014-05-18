@@ -18,7 +18,6 @@ import net.minecraft.block.BlockContainer
 class BlockGateway(id: Int) extends BlockContainer(id, Material.rock)
 	with Immobile
 	with GatewayTile
-	with Ignitable
 {
     disableStats()
 	setBlockUnbreakable()
@@ -28,11 +27,13 @@ class BlockGateway(id: Int) extends BlockContainer(id, Material.rock)
     
     private var activeSideIcon: Icon = null
     
-	override def onBlockAdded(world: World, x: Int, y: Int, z: Int) {
+	override def onBlockAdded(world: World, x: Int, y: Int, z: Int)
+    {
         tile(world, x, y, z).onCreate
 	}
     
-    override def registerIcons(icons: IconRegister) {
+    override def registerIcons(icons: IconRegister)
+    {
         blockIcon = icons.registerIcon("gateway:gateway")
         activeSideIcon = icons.registerIcon("gateway:gateway_a")
     }
@@ -41,8 +42,8 @@ class BlockGateway(id: Int) extends BlockContainer(id, Material.rock)
         if (side == 1) activeSideIcon
         else blockIcon
 	
-	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: Random) {
-        super.randomDisplayTick(world, x, y, z, random)
+	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: Random)
+    {
 	    for (i <- 0 until 4)
 	        world.spawnParticle("portal", x + random.nextDouble(), y + 1.0, z + random.nextDouble(), 0.0, 1.5, 0.0)
 	}
@@ -52,14 +53,10 @@ class BlockGateway(id: Int) extends BlockContainer(id, Material.rock)
     override def idPicked(w: World, x: Int, y: Int, z: Int) = 0
     override def idDropped(p1: Int, random: Random, p2: Int) = 0
     
-    // Ignitable
-    override protected def doIgniteAction(world: World, x: Int, y: Int, z: Int) {
-        world.setBlock(x, y, z, Assets.blockKeystone.blockID)
-        world.notifyBlockChange(x, y, z, Assets.blockKeystone.blockID)
-    }
 	// Teleports specified entity to other gateway
-	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) {
-	    tile(world, x, y, z).teleportEntity(entity)
+	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity)
+    {
+    	tile(world, x, y, z).teleportEntity(entity)
 	}
 	
 	protected def tile(world: World, x: Int, y: Int, z: Int) =
