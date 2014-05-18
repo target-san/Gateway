@@ -34,7 +34,6 @@ class TileGateway extends TileEntity
 		exitDim = dim
 		owner = player.username
 		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
-		System.out.println(s"Set params: ($exitX, $exitY, $exitZ, $exitDim) @ $owner")
 	}
     
 	def teleportEntity(entity: Entity)
@@ -67,14 +66,12 @@ class TileGateway extends TileEntity
 		exitZ = pos(2)
 		exitDim = pos(3)
 		owner = tag.getString("owner")
-		System.out.println(s"Read params from NBT: ($exitX, $exitY, $exitZ, $exitDim) @ $owner")
 	}
 	
 	override def writeToNBT(tag: NBTTagCompound)
 	{
 		if (tag == null)
 			return
-		System.out.println(s"Stored params to NBT: ($exitX, $exitY, $exitZ, $exitDim) @ $owner")
 		tag.setIntArray("exitPos", Array(exitX, exitY, exitZ, exitDim))
 		tag.setString("owner", owner)
 	}
