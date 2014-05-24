@@ -21,7 +21,7 @@ class TileGateway extends TileEntity
     def onCreate
     {
 	    for (y1 <- yCoord + 1 to yCoord + PILLAR_HEIGHT)
-	        worldObj.setBlock(xCoord, y1, zCoord, Assets.blockPortal.blockID, Assets.blockPortal.PORTAL_META, 3)
+	        worldObj.setBlock(xCoord, y1, zCoord, Assets.blockPortal, Assets.blockPortal.PORTAL_META, 3)
     }
 	
 	def setGatewayInfo(x: Int, y: Int, z: Int, dim: Int, player: EntityPlayer)
@@ -32,7 +32,7 @@ class TileGateway extends TileEntity
 		exitY = y
 		exitZ = z
 		exitDim = dim
-		owner = player.username
+		owner = player.getGameProfile().getId()
 		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
 	}
     
@@ -47,12 +47,12 @@ class TileGateway extends TileEntity
 	    
 	    val exitWorld = GatewayUtils.world(exitDim)
 	    
-	    val exitTile = exitWorld.getBlockTileEntity(exitX, exitY, exitZ)
+	    val exitTile = exitWorld.getTileEntity(exitX, exitY, exitZ)
 	    if (exitTile == null || !exitTile.isInstanceOf[TileGateway])
 	    	return
 	    	
     	val (destX, destY, destZ) = findExitPos(entity, xCoord, yCoord, zCoord, exitX, exitY, exitZ)
-	    Teleporter.teleport(entity, destX, destY, destZ, exitDim)
+	    //Teleporter.teleport(entity, destX, destY, destZ, exitDim) // Disabled till the time I'll have proper teleport code
 	}
 	
 	// NBT
