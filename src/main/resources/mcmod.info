@@ -4,14 +4,14 @@
   "modid": "Gateway",
   "name": "Gateway",
   "description":"Cross-dimensional portals done right",
-  "version": "0.1",
-  "mcversion": "1.6.4",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
   "url": "",
   "authors": [ "Target-san" ],
   "credits": "",
   "logoFile": "",
   "screenshots": [],
-
+  "dependencies": [],
   "requiredMods": [
       "Forge"
   ]

@@ -60,6 +60,7 @@ class TileGateway extends TileEntity
 	{
 		if (tag == null)
 			return
+		super.readFromNBT(tag)
 		val pos = tag.getIntArray("exitPos")
 		exitX = pos(0)
 		exitY = pos(1)
@@ -72,6 +73,7 @@ class TileGateway extends TileEntity
 	{
 		if (tag == null)
 			return
+		super.writeToNBT(tag)
 		tag.setIntArray("exitPos", Array(exitX, exitY, exitZ, exitDim))
 		tag.setString("owner", owner)
 	}
