@@ -7,7 +7,7 @@
  * All side things like biometrics are dropped, it only moves _any_ entity to specified dimension at specified location
  * Mount/rider pairs also supported 
  */
-package targetsan.mcmods.gateway;
+package org.targetsan.mcmods.gateway;
 
 import java.util.Arrays;
 
