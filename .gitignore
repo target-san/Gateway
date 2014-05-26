@@ -1,9 +1,15 @@
+/.gradle
+/.settings
 /bin
 /build
+/config
 /eclipse
-/.gradle
+/logs
+/mods
+/resourcepacks
+/saves
+/.cache
 /.classpath
 /.project
-/.settings
-/.cache
+
 
