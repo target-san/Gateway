@@ -1,4 +1,4 @@
-package targetsan.mcmods.gateway
+package org.targetsan.mcmods.gateway
 
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.entity.Entity

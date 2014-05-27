@@ -14,5 +14,5 @@
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="net.minecraft.launchwrapper.Launch"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--version 1.6 --tweakClass cpw.mods.fml.common.launcher.FMLTweaker --accessToken player --username player"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="Gateway"/>
-<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dfml.ignoreInvalidMinecraftCertificates=true -Djava.library.path=&quot;${project_loc}/build/natives&quot;"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dfml.ignoreInvalidMinecraftCertificates=true -Djava.library.path=&quot;${project_loc}/build/natives&quot; -Dfml.coreMods.load=org.targetsan.mcmods.gateway.GatewayCoreMod"/>
 </launchConfiguration>
