@@ -6,6 +6,7 @@ import cpw.mods.fml.common.event.FMLPostInitializationEvent
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin.MCVersion
 import net.minecraft.launchwrapper.IClassTransformer
+import org.objectweb.asm._
 
 @Mod(modid = "gateway", useMetadata = true, modLanguage = "scala")
 object GatewayMod {
@@ -35,5 +36,13 @@ class FlintAndSteelPatcher extends IClassTransformer
 		if (transformedName == "net.minecraft.item.ItemFlintAndSteel") applyPatch(bytes)
 		else bytes
 	
-	private def applyPatch(bytes: Array[Byte]): Array[Byte] = bytes
+	private def applyPatch(bytes: Array[Byte]): Array[Byte] =
+	{
+		val reader = new ClassReader(bytes)
+		val writer = new ClassWriter(reader, ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS)
+		
+		reader.accept(writer, 0)
+		writer.toByteArray()
+	}
 }
+

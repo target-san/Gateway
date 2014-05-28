@@ -1,9 +1,9 @@
 /.gradle
 /.settings
+/assets
 /bin
 /build
 /config
-/eclipse
 /logs
 /mods
 /resourcepacks
@@ -11,5 +11,6 @@
 /.cache
 /.classpath
 /.project
+options.txt
 
 
