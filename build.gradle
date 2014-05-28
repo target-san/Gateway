@@ -1,17 +1,22 @@
 // Buildscript config prolog
-buildscript {
-    repositories {
+buildscript
+{
+    repositories
+    {
         mavenCentral()
-        maven {
+        maven
+        {
             name = "forge"
             url = "http://files.minecraftforge.net/maven"
         }
-        maven {
+        maven
+        {
             name = "sonatype"
             url = "https://oss.sonatype.org/content/repositories/snapshots/"
         }
     }
-    dependencies {
+    dependencies
+    {
         classpath 'net.minecraftforge.gradle:ForgeGradle:1.2-SNAPSHOT'
     }
 }
@@ -23,9 +28,18 @@ version = "0.1"
 group= "org.targetsan.mcmods.gateway" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "gateway"
 
-minecraft {
+minecraft
+{
     version = "1.7.2-10.12.1.1060"
     assetDir = "assets"
+}
+
+jar
+{
+    manifest
+    {
+        attributes 'FMLCorePlugin': 'org.targetsan.mcmods.gateway.GatewayCoreMod'
+    }
 }
 // Standard thing with setting properties in mcmod.info
 processResources
