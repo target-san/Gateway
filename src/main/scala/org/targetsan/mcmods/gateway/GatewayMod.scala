@@ -32,9 +32,8 @@ class GatewayCoreMod extends IFMLLoadingPlugin
 class FlintAndSteelPatcher extends IClassTransformer
 {
 	override def transform(name: String, transformedName: String, bytes: Array[Byte]): Array[Byte] =
-	{
-		if (transformedName == "net.minecraft.item.ItemFlintAndSteel")
-			System.out.println("[!!!WOOT!!!] Found flint'n'steel class")
-		bytes
-	}
+		if (transformedName == "net.minecraft.item.ItemFlintAndSteel") applyPatch(bytes)
+		else bytes
+	
+	private def applyPatch(bytes: Array[Byte]): Array[Byte] = bytes
 }

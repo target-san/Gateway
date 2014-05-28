@@ -8,9 +8,19 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.util.EnumChatFormatting
 import net.minecraft.util.ChunkCoordinates
+import net.minecraft.item.ItemStack
 
 object Utils
 {
+	// Injected into ItemFlintAndSteel.onItemUse, like:
+	// if (flintAndSteelPreUse(...)) return true;
+	def flintAndSteelPreUse(
+		stack: ItemStack, player: EntityPlayer,
+		blockX: Int, blockY: Int, blockZ: Int, blockSide: Int,
+		touchX: Float, touchY: Float, touchZ: Float
+	): Boolean =
+		false
+	
     def enumVolume(world: World, x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =
         for (x <- x1 to x2; y <- y1 to y2; z <- z1 to z2) yield (x, y, z)
         
