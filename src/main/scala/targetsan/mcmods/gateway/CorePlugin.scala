@@ -1,26 +1,11 @@
 package targetsan.mcmods.gateway
 
-import cpw.mods.fml.common.Mod
-import cpw.mods.fml.common.event.FMLInitializationEvent
-import cpw.mods.fml.common.event.FMLPostInitializationEvent
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin.MCVersion
 import net.minecraft.launchwrapper.IClassTransformer
 import org.objectweb.asm._
 import cpw.mods.fml.common.asm.transformers.deobf.FMLDeobfuscatingRemapper
 import org.objectweb.asm.commons.RemappingClassAdapter
-
-@Mod(modid = "gateway", useMetadata = true, modLanguage = "scala")
-object GatewayMod {
-	val MODID = "gateway"
-    
-    @Mod.EventHandler
-	def init(event: FMLInitializationEvent) {
-    }
-    @Mod.EventHandler
-	def postInit(event: FMLPostInitializationEvent) {
-    }
-}
 
 object GatewayCoreMod
 {
