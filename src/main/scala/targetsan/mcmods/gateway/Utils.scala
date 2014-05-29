@@ -1,4 +1,4 @@
-package org.targetsan.mcmods.gateway
+package targetsan.mcmods.gateway
 
 import net.minecraft.block.Block
 import net.minecraft.util.AxisAlignedBB

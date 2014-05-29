@@ -25,7 +25,7 @@ apply plugin: 'scala'
 apply plugin: 'forge'
 
 version = "0.1"
-group= "org.targetsan.mcmods.gateway" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
+group= "targetsan.mcmods.gateway" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "gateway"
 
 minecraft
@@ -38,7 +38,8 @@ jar
 {
     manifest
     {
-        attributes 'FMLCorePlugin': 'org.targetsan.mcmods.gateway.GatewayCoreMod'
+        attributes 'FMLCorePlugin': 'targetsan.mcmods.gateway.GatewayCoreMod'
+        attributes 'FMLCorePluginContainsFMLMod': 'true'
     }
 }
 // Standard thing with setting properties in mcmod.info

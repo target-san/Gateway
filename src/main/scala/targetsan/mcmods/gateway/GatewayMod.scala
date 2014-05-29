@@ -1,4 +1,4 @@
-package org.targetsan.mcmods.gateway
+package targetsan.mcmods.gateway
 
 import cpw.mods.fml.common.Mod
 import cpw.mods.fml.common.event.FMLInitializationEvent
@@ -22,14 +22,22 @@ object GatewayMod {
     }
 }
 
+object GatewayCoreMod
+{
+	var isDebug: Boolean = false
+}
+
 @MCVersion("1.7.2")
 class GatewayCoreMod extends IFMLLoadingPlugin
 {
-	override def getASMTransformerClass: Array[String] = Array("org.targetsan.mcmods.gateway.FlintAndSteelPatcher")
+	override def getASMTransformerClass: Array[String] = Array("targetsan.mcmods.gateway.FlintAndSteelPatcher")
 	override def getModContainerClass: String = null
 	override def getSetupClass: String = null //getClass.getName
-	override def injectData(data: java.util.Map[String, Object]) { }
 	override def getAccessTransformerClass: String = null
+
+	override def injectData(data: java.util.Map[String, Object])
+	{
+	}
 }
 
 class FlintAndSteelPatcher extends IClassTransformer
@@ -59,4 +67,3 @@ class FlintAndSteelPatcher extends IClassTransformer
 		}
 	}
 }
-
