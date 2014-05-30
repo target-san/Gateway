@@ -3,6 +3,9 @@ package targetsan.mcmods.gateway
 import cpw.mods.fml.common.Mod
 import cpw.mods.fml.common.event.FMLInitializationEvent
 import cpw.mods.fml.common.event.FMLPostInitializationEvent
+import net.minecraftforge.common.MinecraftForge
+import net.minecraftforge.event.entity.player.PlayerInteractEvent
+import cpw.mods.fml.common.eventhandler.SubscribeEvent
 
 @Mod(modid = "gateway", useMetadata = true, modLanguage = "scala")
 object GatewayMod {
@@ -11,7 +14,16 @@ object GatewayMod {
     @Mod.EventHandler
 	def init(event: FMLInitializationEvent)
 	{ }
+
     @Mod.EventHandler
 	def postInit(event: FMLPostInitializationEvent)
-    { }
+    {
+    	MinecraftForge.EVENT_BUS.register(this)
+    }
+    
+    @SubscribeEvent
+    def onPlayerInteract(event: PlayerInteractEvent): Unit =
+    {
+    	Utils.flintAndSteelPreUse(event)
+    }
 }

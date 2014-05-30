@@ -33,15 +33,6 @@ minecraft
     version = "1.7.2-10.12.1.1060"
     assetDir = "assets"
 }
-
-jar
-{
-    manifest
-    {
-        attributes 'FMLCorePlugin': 'targetsan.mcmods.gateway.GatewayCoreMod'
-        attributes 'FMLCorePluginContainsFMLMod': 'true'
-    }
-}
 // Standard thing with setting properties in mcmod.info
 processResources
 {

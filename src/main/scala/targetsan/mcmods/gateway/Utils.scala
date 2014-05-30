@@ -9,19 +9,23 @@ import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.util.EnumChatFormatting
 import net.minecraft.util.ChunkCoordinates
 import net.minecraft.item.ItemStack
+import net.minecraftforge.event.entity.player.PlayerInteractEvent
+import cpw.mods.fml.common.registry.GameRegistry
 
 object Utils
 {
+	private lazy val itemFlintAndSteel = GameRegistry.findItem("minecraft", "flint_and_steel")
 	// Injected into ItemFlintAndSteel.onItemUse, like:
 	// if (flintAndSteelPreUse(...)) return true;
-	def flintAndSteelPreUse(
-		stack: ItemStack, player: EntityPlayer,
-		blockX: Int, blockY: Int, blockZ: Int, blockSide: Int,
-		touchX: Float, touchY: Float, touchZ: Float
-	): Boolean =
+	def flintAndSteelPreUse(event: PlayerInteractEvent): Unit =
 	{
+		// We're interested in Flint'n'Steel only
+		if (event.entityPlayer == null ||
+			event.entityPlayer.getHeldItem == null ||
+			event.entityPlayer.getHeldItem.getItem != itemFlintAndSteel
+		)
+			return
 		System.out.println("Flint'n'Steel used")
-		false
 	}
 	
     def enumVolume(world: World, x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =
