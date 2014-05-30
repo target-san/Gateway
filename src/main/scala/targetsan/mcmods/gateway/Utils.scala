@@ -19,10 +19,11 @@ object Utils
 	// if (flintAndSteelPreUse(...)) return true;
 	def flintAndSteelPreUse(event: PlayerInteractEvent): Unit =
 	{
-		// We're interested in Flint'n'Steel only
+		// We're interested in Flint'n'Steel clicking some block only
 		if (event.entityPlayer == null ||
 			event.entityPlayer.getHeldItem == null ||
-			event.entityPlayer.getHeldItem.getItem != itemFlintAndSteel
+			event.entityPlayer.getHeldItem.getItem != itemFlintAndSteel ||
+			event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK
 		)
 			return
 		System.out.println("Flint'n'Steel used")
