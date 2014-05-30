@@ -19,7 +19,10 @@ object Utils
 		blockX: Int, blockY: Int, blockZ: Int, blockSide: Int,
 		touchX: Float, touchY: Float, touchZ: Float
 	): Boolean =
+	{
+		System.out.println("Flint'n'Steel used")
 		false
+	}
 	
     def enumVolume(world: World, x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =
         for (x <- x1 to x2; y <- y1 to y2; z <- z1 to z2) yield (x, y, z)
