@@ -1,7 +1,7 @@
 package targetsan.mcmods.gateway
 
 import net.minecraft.block.Block
-import net.minecraft.util.AxisAlignedBB
+import net.minecraft.util._
 import net.minecraft.world.World
 import net.minecraft.entity.Entity
 import net.minecraft.server.MinecraftServer
@@ -11,14 +11,16 @@ import net.minecraft.util.ChunkCoordinates
 import net.minecraft.item.ItemStack
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import cpw.mods.fml.common.registry.GameRegistry
+import net.minecraft.init.Blocks
 
 object Utils
 {
 	private lazy val itemFlintAndSteel = GameRegistry.findItem("minecraft", "flint_and_steel")
-	// Injected into ItemFlintAndSteel.onItemUse, like:
-	// if (flintAndSteelPreUse(...)) return true;
+	// Invoked from PlayerInteractEvent handler
 	def flintAndSteelPreUse(event: PlayerInteractEvent): Unit =
 	{
+		if (event.entityPlayer.worldObj.isRemote) // Works only server-side
+			return
 		// We're interested in Flint'n'Steel clicking some block only
 		if (event.entityPlayer == null ||
 			event.entityPlayer.getHeldItem == null ||
@@ -26,7 +28,24 @@ object Utils
 			event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK
 		)
 			return
-		System.out.println("Flint'n'Steel used")
+		// verify underlying multiblock
+		val w = event.entityPlayer.worldObj
+		val (x, y, z) = (event.x, event.y, event.z)
+		if (// corners
+			w.getBlock(x - 1, y, z - 1) != Blocks.obsidian
+		 || w.getBlock(x + 1, y, z - 1) != Blocks.obsidian
+		 || w.getBlock(x - 1, y, z + 1) != Blocks.obsidian
+		 || w.getBlock(x + 1, y, z + 1) != Blocks.obsidian
+		 // sides
+		 || w.getBlock(x - 1, y, z) != Blocks.glass
+		 || w.getBlock(x + 1, y, z) != Blocks.glass
+		 || w.getBlock(x, y, z - 1) != Blocks.glass
+		 || w.getBlock(x, y, z + 1) != Blocks.glass
+		 // center
+		 || w.getBlock(x, y, z) != Blocks.redstone_block
+		)
+			return
+		event.entityPlayer.addChatMessage(new ChatComponentText(s"It's a proper gateway basement"))
 	}
 	
     def enumVolume(world: World, x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =

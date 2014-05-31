@@ -1,19 +1,16 @@
 [
 {
-  "modinfoversion": 2,
-  "modid": "Gateway",
-  "name": "Gateway",
-  "description":"Cross-dimensional portals done right",
-  "version": "${version}",
-  "mcversion": "${mcversion}",
-  "url": "",
-  "authors": [ "Target-san" ],
-  "credits": "",
-  "logoFile": "",
+  "modid":       "gateway",
+  "name":        "Gateway",
+  "description": "Cross-dimensional portals done right",
+  "version":     "${version}",
+  "mcversion":   "${mcversion}",
+  "url":         "",
+  "authors":     [ "Target-san" ],
+  "credits":     "",
+  "logoFile":    "",
   "screenshots": [],
   "dependencies": [],
-  "requiredMods": [
-      "Forge"
-  ]
+  "requiredMods": [ "Forge" ]
 }
 ]
