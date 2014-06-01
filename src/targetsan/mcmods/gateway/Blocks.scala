@@ -58,6 +58,7 @@ class BlockGatewayAir extends Block(Material.portal)
 {
 	disableStats()
 	setBlockName("GatewayAir")
+	setBlockTextureName("minecraft:stone")
 	
 	override def onEntityCollidedWithBlock(world: World, x: Int, y: Int, z: Int, entity: Entity)
 	{

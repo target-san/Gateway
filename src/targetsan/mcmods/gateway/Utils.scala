@@ -15,6 +15,19 @@ import net.minecraft.init.Blocks
 
 object Utils
 {
+	private val GatewayDeadZoneRadius = 7
+	
+	val NETHER_DIM_ID = -1
+	
+	def world(dim: Int) = MinecraftServer.getServer().worldServerForDimension(dim)
+	def netherWorld = world(NETHER_DIM_ID)
+	
+	def mapToWorld(x: Int, z: Int, from: World, to: World) =
+	{
+		def mapCoord(c: Int) = Math.round(c * from.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt 
+		(mapCoord(x), mapCoord(z))
+	}
+	
 	private lazy val itemFlintAndSteel = GameRegistry.findItem("minecraft", "flint_and_steel")
 	// Invoked from PlayerInteractEvent handler
 	def flintAndSteelPreUse(event: PlayerInteractEvent): Unit =
@@ -28,9 +41,13 @@ object Utils
 			event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK
 		)
 			return
-		// verify underlying multiblock
-		val w = event.entityPlayer.worldObj
-		val (x, y, z) = (event.x, event.y, event.z)
+		// Try place gateway here
+		tryPlaceGateway(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
+	}
+	
+	private def tryPlaceGateway(w: World, x: Int, y: Int, z: Int, player: EntityPlayer)
+	{
+		// Check if there's multiblock present
 		if (// corners
 			w.getBlock(x - 1, y, z - 1) != Blocks.obsidian
 		 || w.getBlock(x + 1, y, z - 1) != Blocks.obsidian
@@ -45,17 +62,49 @@ object Utils
 		 || w.getBlock(x, y, z) != Blocks.redstone_block
 		)
 			return
-		event.entityPlayer.addChatMessage(new ChatComponentText("Placed gateway"))
-		event.entityPlayer.worldObj.setBlock(event.x, event.y, event.z, GatewayMod.BlockGatewayBase)
+		 
+		if (w.provider.dimensionId == NETHER_DIM_ID)
+		{
+			player.addChatMessage(new ChatComponentText("Gateways cannot be constructed from Nether"))
+			return
+		}
+		// Check dead zone on the other side
+		if (!isDestinationFree(w, x, y, z))
+		{
+			player.addChatMessage(new ChatComponentText("Gateway cannot be constructed here - there's another gateway too near on the other side"))
+			return
+		}
+		// Construct gateways on both sides
+		w.setBlock(x, y, z, GatewayMod.BlockGatewayBase)
+		val (ex, ey, ez) = getExit(w, x, y, z)
+		netherWorld.setBlock(ex, ey, ez, GatewayMod.BlockGatewayBase)
+		player.addChatMessage(new ChatComponentText(s"Gateway successfully constructed from ${w.provider.getDimensionName} to ${netherWorld.provider.getDimensionName}"))
+	}
+    // Checks if there are no active gateways in the nether too near
+	private def isDestinationFree(from: World, x: Int, y: Int, z: Int): Boolean =
+	{
+		val nether = netherWorld
+		// Gateway exits in nether should have at least 7 blocks square between them
+		val (exitX, exitZ) = mapToWorld(x, z, from, nether)
+		enumVolume(nether,
+				exitX - GatewayDeadZoneRadius, 0, exitZ - GatewayDeadZoneRadius,
+				exitX + GatewayDeadZoneRadius, nether.provider.getActualHeight - 1, exitZ + GatewayDeadZoneRadius
+			)
+			.forall { case (x, y, z) => nether.getBlock(x, y, z) != GatewayMod.BlockGatewayBase }
 	}
 	
-    def enumVolume(world: World, x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =
+	private def getExit(w: World, x: Int, y: Int, z: Int): (Int, Int, Int) =
+	{
+		val nether = netherWorld
+		val (ex, ez) = mapToWorld(x, z, w, nether)
+		val ey = (nether.provider.getActualHeight - 1) / 2
+		
+		(ex, ey, ez)
+	}
+
+	def enumVolume(world: World, x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =
         for (x <- x1 to x2; y <- y1 to y2; z <- z1 to z2) yield (x, y, z)
         
-	val NETHER_DIM_ID = -1
-	
-	def world(dim: Int) = MinecraftServer.getServer().worldServerForDimension(dim)
-	def netherWorld = world(NETHER_DIM_ID)
 	/** Moves entity along the vector 
 	 * 
 	 */
@@ -137,23 +186,6 @@ object Utils
 		}
 		placeGatewayAt(player, x, y, z)
 		true
-	}
-	// Returns false if gateway can't be instantiated here
-	private def canGatewayBeHere(player: EntityPlayer, x: Int, y: Int, z: Int): Boolean =
-	{
-		val nether = netherWorld
-		// Gateway exits in nether should have at least 7 blocks square between them
-		val (exitX, exitY, exitZ) = netherExit(player.worldObj, x, y, z)
-		BlockUtils.blockVolume(netherWorld, exitX - 7, exitY, exitZ - 7, exitX + 7, exitY, exitZ + 7)
-			.forall { case (x, y, z) => nether.getBlockId(x, y, z) != Assets.blockGateway.blockID }
-	}
-	
-	private def calcCoord(c: Int, from: World, to: World) = Math.round(c * from.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt
-	
-	private def netherExit(world: World, x: Int, y: Int, z: Int) =
-	{
-		val nether = netherWorld
-		(calcCoord(x, world, nether), nether.provider.getActualHeight() / 2, calcCoord(z, world, nether))
 	}
 	
 	private def placeGatewayBlock(world: World, x: Int, y: Int, z: Int, owner: EntityPlayer, exitX: Int, exitY: Int, exitZ: Int, exitDim: Int)
