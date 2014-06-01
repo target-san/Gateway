@@ -8,15 +8,20 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import cpw.mods.fml.common.eventhandler.SubscribeEvent
 import cpw.mods.fml.common.registry.GameRegistry
 import net.minecraft.item.ItemBlock
+import net.minecraft.block.Block
 
 @Mod(modid = "gateway", useMetadata = true, modLanguage = "scala")
 object GatewayMod {
 	val MODID = "gateway"
+		
+	var BlockGatewayBase: Block = null
+	var BlockGatewayAir: Block = null 
     
     @Mod.EventHandler
 	def init(event: FMLInitializationEvent)
 	{
-		GameRegistry.registerBlock(new BlockGateway, "gateway")
+		BlockGatewayBase = GameRegistry.registerBlock(new BlockGatewayBase, "GatewayBase")
+		BlockGatewayAir  = GameRegistry.registerBlock(new BlockGatewayAir,  "GatewayAir")
 		GameRegistry.registerTileEntity(classOf[TileGateway], "tileGateway")
 	}
 

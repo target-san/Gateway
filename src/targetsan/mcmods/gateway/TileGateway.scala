@@ -32,7 +32,8 @@ class TileGateway extends TileEntity
     
 	def teleportEntity(entity: Entity)
 	{
-	    if (worldObj.isRemote)
+		/*
+	    if (worldObj.isRemote) // Performed only server-side
 	    	return
 	    
 	    if (owner.isEmpty)
@@ -44,7 +45,7 @@ class TileGateway extends TileEntity
 	    val exitTile = exitWorld.getTileEntity(exitX, exitY, exitZ)
 	    if (exitTile == null || !exitTile.isInstanceOf[TileGateway])
 	    	return
-	    	
+	    */
     	//val (destX, destY, destZ) = findExitPos(entity, xCoord, yCoord, zCoord, exitX, exitY, exitZ)
 	    //Teleporter.teleport(entity, destX, destY, destZ, exitDim) // Disabled till the time I'll have proper teleport code
 	}

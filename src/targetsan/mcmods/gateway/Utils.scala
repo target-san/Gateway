@@ -45,7 +45,8 @@ object Utils
 		 || w.getBlock(x, y, z) != Blocks.redstone_block
 		)
 			return
-		event.entityPlayer.addChatMessage(new ChatComponentText(s"It's a proper gateway basement"))
+		event.entityPlayer.addChatMessage(new ChatComponentText("Placed gateway"))
+		event.entityPlayer.worldObj.setBlock(event.x, event.y, event.z, GatewayMod.BlockGatewayBase)
 	}
 	
     def enumVolume(world: World, x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =
