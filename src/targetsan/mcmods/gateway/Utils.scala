@@ -17,10 +17,7 @@ object Utils
 {
 	private val GatewayDeadZoneRadius = 7
 	
-	val NETHER_DIM_ID = -1
-	
 	def world(dim: Int) = MinecraftServer.getServer().worldServerForDimension(dim)
-	def netherWorld = world(NETHER_DIM_ID)
 	
 	def mapToWorld(x: Int, z: Int, from: World, to: World) =
 	{
@@ -46,7 +43,7 @@ object Utils
 		)
 			return
 		 
-		if (w.provider.dimensionId == NETHER_DIM_ID)
+		if (w.provider.dimensionId == Gateway.DIMENSION_ID)
 		{
 			player.addChatMessage(new ChatComponentText("Gateways cannot be constructed from Nether"))
 			return
@@ -61,12 +58,12 @@ object Utils
 		w.setBlock(x, y, z, GatewayMod.BlockGatewayBase)
 		val (ex, ey, ez) = getExit(w, x, y, z)
 		w.getTileEntity(x, y, z).asInstanceOf[TileGateway].init(ex, ey, ez, player)
-		player.addChatMessage(new ChatComponentText(s"Gateway successfully constructed from ${w.provider.getDimensionName} to ${netherWorld.provider.getDimensionName}"))
+		player.addChatMessage(new ChatComponentText(s"Gateway successfully constructed from ${w.provider.getDimensionName} to ${Gateway.dimension.provider.getDimensionName}"))
 	}
     // Checks if there are no active gateways in the nether too near
 	private def isDestinationFree(from: World, x: Int, y: Int, z: Int): Boolean =
 	{
-		val nether = netherWorld
+		val nether = Gateway.dimension
 		// Gateway exits in nether should have at least 7 blocks square between them
 		val (exitX, exitZ) = mapToWorld(x, z, from, nether)
 		enumVolume(nether,
@@ -78,7 +75,7 @@ object Utils
 	
 	private def getExit(w: World, x: Int, y: Int, z: Int): (Int, Int, Int) =
 	{
-		val nether = netherWorld
+		val nether = Gateway.dimension
 		val (ex, ez) = mapToWorld(x, z, w, nether)
 		val ey = (nether.provider.getActualHeight - 1) / 2
 		

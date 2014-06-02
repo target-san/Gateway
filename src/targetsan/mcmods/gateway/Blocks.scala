@@ -10,6 +10,29 @@ import net.minecraft.item.Item
 import net.minecraft.entity.Entity
 import net.minecraft.util.AxisAlignedBB
 import net.minecraft.entity.player.EntityPlayer
+import cpw.mods.fml.common.eventhandler.SubscribeEvent
+import net.minecraftforge.event.entity.player.PlayerInteractEvent
+
+object Gateway
+{
+	val DIMENSION_ID = -1 // Nether
+	def dimension = Utils.world(DIMENSION_ID)
+	
+    @SubscribeEvent
+    def onFlintAndSteelPreUse(event: PlayerInteractEvent): Unit =
+    {
+		if (event.entityPlayer.worldObj.isRemote) // Works only server-side
+			return
+		// We're interested in Flint'n'Steel clicking some block only
+		if (event.entityPlayer == null ||
+			event.entityPlayer.getHeldItem.getItem != net.minecraft.init.Items.flint_and_steel ||
+			event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK
+		)
+			return
+		// Try place gateway here
+		Utils.tryPlaceGateway(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
+    }
+}
 
 class BlockGatewayBase extends BlockContainer(Material.rock)
 	with DropsNothing

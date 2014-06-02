@@ -24,19 +24,19 @@ class TileGateway extends TileEntity
 		if (worldObj.isRemote)
 			return
 		// This init can be called only from non-gateway dimension
-		if (worldObj.provider.dimensionId == Utils.NETHER_DIM_ID)
+		if (worldObj.provider.dimensionId == Gateway.DIMENSION_ID)
 			throw new IllegalStateException("Tile cannot be initialized in such a way from Nether")
 		initBase(x, y, z, player)
-		exitDim = Utils.NETHER_DIM_ID
+		exitDim = Gateway.DIMENSION_ID
 		// When gateway tile is properly initialized, we construct exitpoint on the other side
-		val nether = Utils.netherWorld
-		nether.setBlock(x, y, z, GatewayMod.BlockGatewayBase)
-		nether.getTileEntity(x, y, z).asInstanceOf[TileGateway].init(xCoord, yCoord, zCoord, worldObj.provider.dimensionId, player)
+		val gateworld = Gateway.dimension
+		gateworld.setBlock(x, y, z, GatewayMod.BlockGatewayBase)
+		gateworld.getTileEntity(x, y, z).asInstanceOf[TileGateway].init(xCoord, yCoord, zCoord, worldObj.provider.dimensionId, player)
 	}
     
 	private def init(x: Int, y: Int, z: Int, dim: Int, player: EntityPlayer)
 	{
-		if (worldObj.provider.dimensionId != Utils.NETHER_DIM_ID)
+		if (worldObj.provider.dimensionId != Gateway.DIMENSION_ID)
 			throw new IllegalStateException("Tile can be initialized in such a way only from Nether")
 		initBase(x, y, z, player)
 		exitDim = dim
@@ -58,8 +58,8 @@ class TileGateway extends TileEntity
 		if (worldObj.isRemote)
 			return
 		// This would trigger removal of the gateway's endpoint located in Nether
-		if (worldObj.provider.dimensionId != Utils.NETHER_DIM_ID)
-			Utils.netherWorld.setBlock(exitX, exitY, exitZ, Blocks.stone)
+		if (worldObj.provider.dimensionId != Gateway.DIMENSION_ID)
+			Gateway.dimension.setBlock(exitX, exitY, exitZ, Blocks.stone)
 			
 		owner = null
 		exitX = 0
