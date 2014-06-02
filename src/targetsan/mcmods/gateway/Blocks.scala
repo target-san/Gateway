@@ -9,6 +9,7 @@ import net.minecraft.util.IIcon
 import net.minecraft.item.Item
 import net.minecraft.entity.Entity
 import net.minecraft.util.AxisAlignedBB
+import net.minecraft.entity.player.EntityPlayer
 
 class BlockGatewayBase extends BlockContainer(Material.rock)
 	with DropsNothing
@@ -23,16 +24,11 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	override def createNewTileEntity(world: World, meta: Int) = new TileGateway
 	override def onBlockAdded(world: World, x: Int, y: Int, z: Int)
 	{
+		// construct multiblock
 		if (world.isRemote)
 			return
 		for (y1 <- y+1 to y+3 )
 			world.setBlock(x, y1, z, GatewayMod.BlockGatewayAir)
-	}
-	
-	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: java.util.Random)
-	{
-		for (i <- 0 until 4)
-			world.spawnParticle("portal", x + random.nextDouble(), y + 1.0, z + random.nextDouble(), 0.0, 1.5, 0.0)
 	}
 	
 	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int)
@@ -41,8 +37,15 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 			return
 		for (y1 <- y+1 to y+3 )
 			world.setBlockToAir(x, y1, z)
+		world.getTileEntity(x, y, z).asInstanceOf[TileGateway].dispose
 	}
 
+	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: java.util.Random)
+	{
+		for (i <- 0 until 4)
+			world.spawnParticle("portal", x + random.nextDouble(), y + 1.0, z + random.nextDouble(), 0.0, 1.5, 0.0)
+	}
+	
 	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity)
 	{
 		world.getTileEntity(x, y, z).asInstanceOf[TileGateway].teleportEntity(entity)

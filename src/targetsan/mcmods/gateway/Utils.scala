@@ -11,7 +11,7 @@ import net.minecraft.util.ChunkCoordinates
 import net.minecraft.item.ItemStack
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import cpw.mods.fml.common.registry.GameRegistry
-import net.minecraft.init.Blocks
+import net.minecraft.init.{Blocks, Items}
 
 object Utils
 {
@@ -28,24 +28,7 @@ object Utils
 		(mapCoord(x), mapCoord(z))
 	}
 	
-	private lazy val itemFlintAndSteel = GameRegistry.findItem("minecraft", "flint_and_steel")
-	// Invoked from PlayerInteractEvent handler
-	def flintAndSteelPreUse(event: PlayerInteractEvent): Unit =
-	{
-		if (event.entityPlayer.worldObj.isRemote) // Works only server-side
-			return
-		// We're interested in Flint'n'Steel clicking some block only
-		if (event.entityPlayer == null ||
-			event.entityPlayer.getHeldItem == null ||
-			event.entityPlayer.getHeldItem.getItem != itemFlintAndSteel ||
-			event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK
-		)
-			return
-		// Try place gateway here
-		tryPlaceGateway(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
-	}
-	
-	private def tryPlaceGateway(w: World, x: Int, y: Int, z: Int, player: EntityPlayer)
+	def tryPlaceGateway(w: World, x: Int, y: Int, z: Int, player: EntityPlayer)
 	{
 		// Check if there's multiblock present
 		if (// corners
@@ -77,7 +60,7 @@ object Utils
 		// Construct gateways on both sides
 		w.setBlock(x, y, z, GatewayMod.BlockGatewayBase)
 		val (ex, ey, ez) = getExit(w, x, y, z)
-		netherWorld.setBlock(ex, ey, ez, GatewayMod.BlockGatewayBase)
+		w.getTileEntity(x, y, z).asInstanceOf[TileGateway].init(ex, ey, ez, player)
 		player.addChatMessage(new ChatComponentText(s"Gateway successfully constructed from ${w.provider.getDimensionName} to ${netherWorld.provider.getDimensionName}"))
 	}
     // Checks if there are no active gateways in the nether too near

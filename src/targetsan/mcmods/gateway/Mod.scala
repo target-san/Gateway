@@ -32,8 +32,17 @@ object GatewayMod {
     }
     
     @SubscribeEvent
-    def onPlayerInteract(event: PlayerInteractEvent): Unit =
+    def onFlintAndSteelPreUse(event: PlayerInteractEvent): Unit =
     {
-    	Utils.flintAndSteelPreUse(event)
+		if (event.entityPlayer.worldObj.isRemote) // Works only server-side
+			return
+		// We're interested in Flint'n'Steel clicking some block only
+		if (event.entityPlayer == null ||
+			event.entityPlayer.getHeldItem.getItem != net.minecraft.init.Items.flint_and_steel ||
+			event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK
+		)
+			return
+		// Try place gateway here
+		Utils.tryPlaceGateway(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
     }
 }

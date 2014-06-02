@@ -7,6 +7,7 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.world.IBlockAccess
 import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.entity.player.EntityPlayer
+import net.minecraft.init.Blocks
 
 class TileGateway extends TileEntity
 {
@@ -17,19 +18,56 @@ class TileGateway extends TileEntity
 	private var exitZ = 0
 	private var exitDim = 0
 	private var owner = ""
+		
+	def init(x: Int, y: Int, z: Int, player: EntityPlayer)
+	{
+		if (worldObj.isRemote)
+			return
+		// This init can be called only from non-gateway dimension
+		if (worldObj.provider.dimensionId == Utils.NETHER_DIM_ID)
+			throw new IllegalStateException("Tile cannot be initialized in such a way from Nether")
+		initBase(x, y, z, player)
+		exitDim = Utils.NETHER_DIM_ID
+		// When gateway tile is properly initialized, we construct exitpoint on the other side
+		val nether = Utils.netherWorld
+		nether.setBlock(x, y, z, GatewayMod.BlockGatewayBase)
+		nether.getTileEntity(x, y, z).asInstanceOf[TileGateway].init(xCoord, yCoord, zCoord, worldObj.provider.dimensionId, player)
+	}
     
-	def setGatewayInfo(x: Int, y: Int, z: Int, dim: Int, player: EntityPlayer)
+	private def init(x: Int, y: Int, z: Int, dim: Int, player: EntityPlayer)
+	{
+		if (worldObj.provider.dimensionId != Utils.NETHER_DIM_ID)
+			throw new IllegalStateException("Tile can be initialized in such a way only from Nether")
+		initBase(x, y, z, player)
+		exitDim = dim
+	}
+	
+	private def initBase(ex: Int, ey: Int, ez: Int, player: EntityPlayer)
 	{
 		if (!owner.isEmpty()) // owner and other params are set only once
 			throw new IllegalStateException("Gateway parameters are set only once")
-		exitX = x
-		exitY = y
-		exitZ = z
-		exitDim = dim
+		exitX = ex
+		exitY = ey
+		exitZ = ez
 		owner = player.getGameProfile().getId()
 		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
 	}
     
+	def dispose()
+	{
+		if (worldObj.isRemote)
+			return
+		// This would trigger removal of the gateway's endpoint located in Nether
+		if (worldObj.provider.dimensionId != Utils.NETHER_DIM_ID)
+			Utils.netherWorld.setBlock(exitX, exitY, exitZ, Blocks.stone)
+			
+		owner = null
+		exitX = 0
+		exitY = 0
+		exitZ = 0
+		exitDim = 0
+	}
+	
 	def teleportEntity(entity: Entity)
 	{
 		/*
