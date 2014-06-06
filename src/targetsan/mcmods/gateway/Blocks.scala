@@ -12,6 +12,7 @@ import net.minecraft.util.AxisAlignedBB
 import net.minecraft.entity.player.EntityPlayer
 import cpw.mods.fml.common.eventhandler.SubscribeEvent
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
+import net.minecraft.init.Blocks
 
 object Gateway
 {
@@ -25,6 +26,7 @@ object Gateway
 			return
 		// We're interested in Flint'n'Steel clicking some block only
 		if (event.entityPlayer == null ||
+			event.entityPlayer.getHeldItem == null ||
 			event.entityPlayer.getHeldItem.getItem != net.minecraft.init.Items.flint_and_steel ||
 			event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK
 		)
@@ -52,6 +54,12 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 			return
 		for (y1 <- y+1 to y+3 )
 			world.setBlock(x, y1, z, GatewayMod.BlockGatewayAir)
+		if (world.provider.dimensionId == Gateway.DIMENSION_ID)
+			Utils.enumVolume(world, x - 2, y, z - 2, x + 2, y, z + 2).foreach
+			{ case (x, y, z) =>
+				if (world.isAirBlock(x, y, z))
+					world.setBlock(x, y, z, Blocks.stone)
+			}
 	}
 	
 	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int)

@@ -30,6 +30,7 @@ class TileGateway extends TileEntity
 	private var teleportQueue: List[Entity] = Nil
 	// This list is supposedly processed the next tick after fill, so should be stored in NBT
 	// First element in pair is rider, the second is mount
+	// TODO: check a way to get rid of this
 	private var remountQueue: List[(Entity, Entity)] = Nil
 		
 	def init(x: Int, y: Int, z: Int, player: EntityPlayer)
@@ -85,18 +86,36 @@ class TileGateway extends TileEntity
 	{
 	    if (worldObj.isRemote || entity == null) // Performed only server-side
 	    	return
-	    
-	    teleportQueue +:= entity
+	    checkGatewayValid
+	    val scheduled = getBottomMount(entity) // avoid multi-port on riders/mounts
+	    if (!teleportQueue.contains(scheduled))
+	    	teleportQueue +:= scheduled
 	}
 	
-	private def enqueueRemount(rider: Entity, mount: Entity)
+	private def getBottomMount(entity: Entity): Entity = 
+		if (entity.ridingEntity != null) getBottomMount(entity.ridingEntity)
+		else entity
+	
+	private def scheduleRemount(rider: Entity, mount: Entity)
 	{
 		remountQueue +:= (rider, mount)
+	}
+	
+	private def checkGatewayValid
+	{
+		if (owner == null || owner.isEmpty)
+			throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
+		if (exitDim == null)
+			throw new IllegalStateException("Gateway not initialized properly: exit dimension reference is NULL")
+		if (!exitDim.getTileEntity(exitX, exitY, exitZ).isInstanceOf[TileGateway])
+			throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
 	}
 	
 	// Update func
 	override def updateEntity
 	{
+		if (worldObj.isRemote)
+			return
 		// Process teleportation queue, comes from this dimension
 		teleportQueue.foreach(teleportAny(_))
 		teleportQueue = Nil
@@ -104,8 +123,6 @@ class TileGateway extends TileEntity
 		remountQueue.foreach { case (rider, mount) => rider.mountEntity(mount) }
 		remountQueue = Nil
 	}
-	
-	override def canUpdate = !worldObj.isRemote // updates occur only server-side
 	
 	// NBT
 	override def readFromNBT(tag: NBTTagCompound)
@@ -143,9 +160,37 @@ class TileGateway extends TileEntity
 	}
 	
 	// Teleport helpers
-	private def teleportAny(entity: Entity)
+	private def teleportAny(entity: Entity): Entity =
 	{
-		
+		// check for rider and unmount
+		val rider = if (entity.riddenByEntity != null) entity.riddenByEntity else null
+		if (rider != null)
+			rider.mountEntity(null)
+		// teleport
+		val exitCoords = translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord))
+		val newEntity = doTeleportAny(entity, exitCoords, exitDim)
+		// teleport rider, if any, and schedule remount
+		if (rider != null)
+		{
+			val newRider = teleportAny(rider)
+			exitDim
+				.getTileEntity(exitX, exitY, exitZ)
+				.asInstanceOf[TileGateway]
+				.scheduleRemount(newRider, newEntity)
+		}
+		newEntity
+	}
+	// Selects between player and non-player teleport
+	private def doTeleportAny(entity: Entity, exit: (Double, Double, Double), to: WorldServer): Entity =
+		doTeleportAny(entity, exit._1, exit._2, exit._3, to)
+
+	private def doTeleportAny(entity: Entity, x: Double, y: Double, z: Double, to: WorldServer): Entity =
+	{
+		val newEntity = 
+			if (entity.isInstanceOf[EntityPlayer]) teleportPlayer(entity.asInstanceOf[EntityPlayerMP], x, y, z, to)
+			else                                   teleportEntity(entity, x, y, z, to)
+		newEntity.worldObj.updateEntity(newEntity)
+		newEntity
 	}
 	// Teleports only non-player entities; applicable for single entities only
 	private def teleportEntity(entity: Entity, x: Double, y: Double, z: Double, to: WorldServer): Entity =
@@ -204,4 +249,64 @@ class TileGateway extends TileEntity
 		
 		player
 	}
+
+	/** This function is used to calculate entity's position after moving through a block
+	 *  Entity is considered to touch block at the start of move, and it's really necessary
+	 *  for the computation to be correct. The move itself is like entity has moved in XZ plane
+	 *  through block till it stops touching the one. The move vector is the entity's velocity.
+	 *  If entity's XZ velocity is zero, then the vector from entity center to block center is taken
+	 *  @param entity Entity to move
+	 *  @param block  Block which entity must move through
+	 *  @return       Exit point
+	 */
+	private def getEntityThruBlockExit(entity: Entity, blockX: Int, blockY: Int, blockZ: Int): (Double, Double, Double) =
+	{
+    	val eps = 0.001
+    	val (x, z) = (entity.posX - blockX, entity.posZ - blockZ)
+	    // guard against zero velocity
+	    val (dx, dz) =
+    		if ( entity.motionX * entity.motionX + entity.motionZ * entity.motionZ > eps * eps) (entity.motionX, entity.motionZ)
+    		else (0.5 - x, 0.5 - z)
+    	val (x1, z1) = getEntityThruBlockExit(x, z, entity.width, dx, dz)
+    	(x1 + blockX, entity.posY, z1 + blockZ)
+	}
+	/** Searches for entity's suitable XZ exit position out of gateway
+	 *  Assumes that gateway block is at (0, 0), so recalculate entity coordinates
+	 *  No delta-check for XZ speed is performed
+	 */
+	private def getEntityThruBlockExit(x: Double, z: Double, width: Double, dx: Double, dz: Double): (Double, Double) = {
+	    // FPU calculation precision
+	    val eps = 0.001
+	    // Compute line equation from move vector
+	    val a = -dz
+	    val b = dx
+	    val c = x * dz - z * dx
+	    // Side coordinates for larger box, which edge would contain new entity center
+	    val collisionEps = 0.05
+	    val left = - (width / 2 + collisionEps)
+	    val right = -left + 1
+
+	    def findCoord1(coef1: Double, coef2: Double, coef3: Double, coord2: Double): Option[Double] =
+	        if (coef1.abs < eps) None // no sense in dealing with tiny coefficients
+	        else {
+	            val coord1 = - (coef2 * coord2 + coef3) / coef1
+	            if (left <= coord1 && coord1 <= right) Some(coord1)
+	            else None
+	        }
+	    
+	    def sameDir(x1: Double, z1: Double): Boolean = dx * (x1 - x) + dz * (z1 - z) > 0 
+	     
+	    def pointFromX(x: Double): Option[(Double, Double)] =
+	        for (z <- findCoord1(b, a, c, x) if sameDir(x, z)) yield (x, z)
+	        
+	    def pointFromZ(z: Double): Option[(Double, Double)] =
+	        for (x <- findCoord1(a, b, c, z) if sameDir(x, z) ) yield (x, z)
+	    
+	    List(pointFromX(left), pointFromX(right), pointFromZ(left), pointFromZ(right)) 
+	    	.flatten // get rid of inexistent points
+	    	.head
+	}
+	// Transposes specified set of coordinates along vector specified by this TE's coords and exit block's coords
+	private def translateCoordEnterToExit(coord: (Double, Double, Double)): (Double, Double, Double) =
+		(coord._1 + exitX - xCoord, coord._2 + exitY - yCoord, coord._3 + exitZ - zCoord)
 }
