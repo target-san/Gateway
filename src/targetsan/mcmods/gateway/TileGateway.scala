@@ -215,6 +215,10 @@ class TileGateway extends TileEntity
 	// Like TeleportEntity, doesn't care about mount/rider status
 	private def teleportPlayer(player: EntityPlayerMP, x: Double, y: Double, z: Double, to: WorldServer): Entity =
 	{
+		/* Note: Yeah, this code is exactly THAT bad.
+		 * It's an almost-direct clone of teleport ServerConfigurationManager.transferPlayerToDimension
+		 * You're welcome to devise a more elegant way of player's teleportation
+		 */
         val oldDim = player.dimension
         val from = Utils.world(player.dimension)
         player.dimension = to.provider.dimensionId
@@ -236,6 +240,9 @@ class TileGateway extends TileEntity
         to.theChunkProviderServer.loadChunk(player.posX.toInt >> 4, player.posZ.toInt >> 4)
         // Install into new world
         player.setPositionAndUpdate(player.posX, player.posY, player.posZ)
+        to.spawnEntityInWorld(player)
+        //to.updateEntityWithOptionalForce(player, false)
+        player.setWorld(to)
         player.theItemInWorldManager.setWorld(to)
         // Some updates
         val confman = player.mcServer.getConfigurationManager()
