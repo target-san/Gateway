@@ -28,10 +28,6 @@ class TileGateway extends TileEntity
 	private var owner = ""
 	// This list is processed the same tick it's initialized, so it shouldn't be stored in NBT
 	private var teleportQueue: List[Entity] = Nil
-	// This list is supposedly processed the next tick after fill, so should be stored in NBT
-	// First element in pair is rider, the second is mount
-	// TODO: check a way to get rid of this
-	private var remountQueue: List[(Entity, Entity)] = Nil
 		
 	def init(x: Int, y: Int, z: Int, player: EntityPlayer)
 	{
@@ -96,11 +92,6 @@ class TileGateway extends TileEntity
 		if (entity.ridingEntity != null) getBottomMount(entity.ridingEntity)
 		else entity
 	
-	private def scheduleRemount(rider: Entity, mount: Entity)
-	{
-		remountQueue +:= (rider, mount)
-	}
-	
 	private def checkGatewayValid
 	{
 		if (owner == null || owner.isEmpty)
@@ -119,9 +110,6 @@ class TileGateway extends TileEntity
 		// Process teleportation queue, comes from this dimension
 		teleportQueue.foreach(teleportAny(_))
 		teleportQueue = Nil
-		// Process remount queue, comes from another dimension
-		remountQueue.foreach { case (rider, mount) => rider.mountEntity(mount) }
-		remountQueue = Nil
 	}
 	
 	// NBT
@@ -136,15 +124,6 @@ class TileGateway extends TileEntity
 		exitZ = pos(2)
 		exitDim = Utils.world(pos(3))
 		owner = tag.getString("owner")
-		val remounts = tag.getIntArray("remounts")
-		if (remounts != null)
-			remountQueue = List
-				.fromArray(remounts)
-				.map(worldObj.getEntityByID(_))
-				.grouped(2)
-				.filter(_.length == 2)
-				.map( { case a :: b :: Nil => (a, b) } )
-				.toList 
 	}
 	
 	override def writeToNBT(tag: NBTTagCompound)
@@ -154,9 +133,6 @@ class TileGateway extends TileEntity
 		super.writeToNBT(tag)
 		tag.setIntArray("exitPos", Array(exitX, exitY, exitZ, exitDim.provider.dimensionId))
 		tag.setString("owner", owner)
-		tag.setIntArray("remounts",
-			remountQueue.flatMap(x => List(x._1.getEntityId, x._2.getEntityId) ).toArray
-		)
 	}
 	
 	// Teleport helpers
@@ -167,31 +143,26 @@ class TileGateway extends TileEntity
 		if (rider != null)
 			rider.mountEntity(null)
 		// teleport
-		val exitCoords = translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord))
-		val newEntity = doTeleportAny(entity, exitCoords, exitDim)
+		val newEntity = doTeleport(entity)
 		// teleport rider, if any, and schedule remount
 		if (rider != null)
 		{
-			val newRider = teleportAny(rider)
-			exitDim
-				.getTileEntity(exitX, exitY, exitZ)
-				.asInstanceOf[TileGateway]
-				.scheduleRemount(newRider, newEntity)
+			val newRider = doTeleport(rider)
+			newRider.mountEntity(newEntity)
 		}
+		exitDim.updateEntity(newEntity)
 		newEntity
 	}
+	
+	private def doTeleport(entity: Entity) = doTeleportAny(entity, getExitPos(entity), exitDim)
+		
 	// Selects between player and non-player teleport
 	private def doTeleportAny(entity: Entity, exit: (Double, Double, Double), to: WorldServer): Entity =
 		doTeleportAny(entity, exit._1, exit._2, exit._3, to)
 
 	private def doTeleportAny(entity: Entity, x: Double, y: Double, z: Double, to: WorldServer): Entity =
-	{
-		val newEntity = 
-			if (entity.isInstanceOf[EntityPlayer]) teleportPlayer(entity.asInstanceOf[EntityPlayerMP], x, y, z, to)
-			else                                   teleportEntity(entity, x, y, z, to)
-		newEntity.worldObj.updateEntity(newEntity)
-		newEntity
-	}
+		if (entity.isInstanceOf[EntityPlayer]) teleportPlayer(entity.asInstanceOf[EntityPlayerMP], x, y, z, to)
+		else                                   teleportEntity(entity, x, y, z, to)
 	// Teleports only non-player entities; applicable for single entities only
 	private def teleportEntity(entity: Entity, x: Double, y: Double, z: Double, to: WorldServer): Entity =
 	{
@@ -257,6 +228,7 @@ class TileGateway extends TileEntity
 		player
 	}
 
+	private def getExitPos(entity: Entity) = translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord))
 	/** This function is used to calculate entity's position after moving through a block
 	 *  Entity is considered to touch block at the start of move, and it's really necessary
 	 *  for the computation to be correct. The move itself is like entity has moved in XZ plane
