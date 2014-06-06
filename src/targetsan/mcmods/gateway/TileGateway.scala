@@ -197,7 +197,7 @@ class TileGateway extends TileEntity
 	{
 		val from = Utils.world(entity.worldObj.provider.dimensionId)
 		val tag = new NBTTagCompound
-		entity.writeToNBT(tag)
+		entity.writeMountToNBT(tag)
 		from.removeEntity(entity)
 		
 		val newEntity = EntityList.createEntityFromNBT(tag, to)
