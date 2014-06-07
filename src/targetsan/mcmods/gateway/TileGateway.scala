@@ -19,8 +19,6 @@ import net.minecraft.potion.PotionEffect
 
 class TileGateway extends TileEntity
 {
-	private val PILLAR_HEIGHT = 3
-	
 	private var exitX = 0
 	private var exitY = 0
 	private var exitZ = 0
@@ -229,6 +227,9 @@ class TileGateway extends TileEntity
 	}
 
 	private def getExitPos(entity: Entity) = translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord))
+	// Transposes specified set of coordinates along vector specified by this TE's coords and exit block's coords
+	private def translateCoordEnterToExit(coord: (Double, Double, Double)): (Double, Double, Double) =
+		(coord._1 + exitX - xCoord, coord._2 + exitY - yCoord, coord._3 + exitZ - zCoord)
 	/** This function is used to calculate entity's position after moving through a block
 	 *  Entity is considered to touch block at the start of move, and it's really necessary
 	 *  for the computation to be correct. The move itself is like entity has moved in XZ plane
@@ -285,7 +286,4 @@ class TileGateway extends TileEntity
 	    	.flatten // get rid of inexistent points
 	    	.head
 	}
-	// Transposes specified set of coordinates along vector specified by this TE's coords and exit block's coords
-	private def translateCoordEnterToExit(coord: (Double, Double, Double)): (Double, Double, Double) =
-		(coord._1 + exitX - xCoord, coord._2 + exitY - yCoord, coord._3 + exitZ - zCoord)
 }

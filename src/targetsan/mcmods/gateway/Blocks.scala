@@ -13,6 +13,7 @@ import net.minecraft.entity.player.EntityPlayer
 import cpw.mods.fml.common.eventhandler.SubscribeEvent
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import net.minecraft.init.Blocks
+import net.minecraft.util.ChatComponentText
 
 object Gateway
 {
@@ -32,8 +33,64 @@ object Gateway
 		)
 			return
 		// Try place gateway here
-		Utils.tryPlaceGateway(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
+		tryPlaceGateway(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
     }
+
+	private def tryPlaceGateway(w: World, x: Int, y: Int, z: Int, player: EntityPlayer)
+	{
+		// Check if there's multiblock present
+		if (!isMultiblockPresent(w, x, y, z))
+			return
+		
+		val to = Gateway.dimension
+		val (ex, ey, ez) = getExit(w, x, y, z)
+		if (w.provider.dimensionId == Gateway.DIMENSION_ID)
+		{
+			player.addChatMessage(new ChatComponentText("Gateways cannot be constructed from Nether"))
+			return
+		}
+		// Check dead zone on the other side
+		if (!isDestinationFree(to, ex, ey, ez))
+		{
+			player.addChatMessage(new ChatComponentText("Gateway cannot be constructed here - there's another gateway too near on the other side"))
+			return
+		}
+		// Construct gateways on both sides
+		w.setBlock(x, y, z, GatewayMod.BlockGatewayBase)
+		w.getTileEntity(x, y, z).asInstanceOf[TileGateway].init(ex, ey, ez, player)
+		player.addChatMessage(new ChatComponentText(s"Gateway successfully constructed from ${w.provider.getDimensionName} to ${Gateway.dimension.provider.getDimensionName}"))
+	}
+	
+	private def isMultiblockPresent(w: World, x: Int, y: Int, z: Int) =
+		// corners
+		w.getBlock(x - 1, y, z - 1) == Blocks.obsidian &&
+		w.getBlock(x + 1, y, z - 1) == Blocks.obsidian &&
+		w.getBlock(x - 1, y, z + 1) == Blocks.obsidian &&
+		w.getBlock(x + 1, y, z + 1) == Blocks.obsidian &&
+		// sides
+		w.getBlock(x - 1, y, z) == Blocks.glass &&
+		w.getBlock(x + 1, y, z) == Blocks.glass &&
+		w.getBlock(x, y, z - 1) == Blocks.glass &&
+		w.getBlock(x, y, z + 1) == Blocks.glass &&
+		 // center
+		w.getBlock(x, y, z) == Blocks.redstone_block
+	
+	private def getExit(from: World, x: Int, y: Int, z: Int): (Int, Int, Int) =
+	{
+		val to = Gateway.dimension
+		def mapCoord(c: Int) = Math.round(c * from.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt 
+		(mapCoord(x), (to.provider.getActualHeight - 1) / 2, mapCoord(z))
+	}
+    // Checks if there are no active gateways in the nether too near
+	private def isDestinationFree(to: World, x: Int, y: Int, z: Int): Boolean =
+	{
+		val Radius = 7
+		Utils.enumVolume(to,
+				x - Radius, 0, z - Radius,
+				x + Radius, to.provider.getActualHeight - 1, z + Radius
+			)
+			.forall { case (x, y, z) => to.getBlock(x, y, z) != GatewayMod.BlockGatewayBase }
+	}
 }
 
 class BlockGatewayBase extends BlockContainer(Material.rock)
@@ -46,13 +103,15 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	setBlockTextureName("gateway:gateway")
 	setStepSound(Block.soundTypePiston)
 	
+	private val PortalHeight = 3
+	
 	override def createNewTileEntity(world: World, meta: Int) = new TileGateway
 	override def onBlockAdded(world: World, x: Int, y: Int, z: Int)
 	{
 		// construct multiblock
 		if (world.isRemote)
 			return
-		for (y1 <- y+1 to y+3 )
+		for (y1 <- y+1 to y+PortalHeight )
 			world.setBlock(x, y1, z, GatewayMod.BlockGatewayAir)
 		if (world.provider.dimensionId == Gateway.DIMENSION_ID)
 			Utils.enumVolume(world, x - 2, y, z - 2, x + 2, y, z + 2).foreach
