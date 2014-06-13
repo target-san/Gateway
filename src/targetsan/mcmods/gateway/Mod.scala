@@ -16,14 +16,14 @@ import net.minecraft.world.World
 object GatewayMod {
 	val MODID = "gateway"
 		
-	var BlockGatewayBase: Block = null
-	var BlockGatewayAir: Block = null 
+	val BlockGatewayBase = new BlockGatewayBase
+	val BlockGatewayAir  = new BlockGatewayAir 
     
     @Mod.EventHandler
 	def init(event: FMLInitializationEvent)
 	{
-		BlockGatewayBase = GameRegistry.registerBlock(new BlockGatewayBase, "GatewayBase")
-		BlockGatewayAir  = GameRegistry.registerBlock(new BlockGatewayAir,  "GatewayAir")
+		GameRegistry.registerBlock(BlockGatewayBase, "GatewayBase")
+		GameRegistry.registerBlock(BlockGatewayAir,  "GatewayAir")
 		GameRegistry.registerTileEntity(classOf[TileGateway], "tileGateway")
 	}
 
