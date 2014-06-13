@@ -97,6 +97,7 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	with DropsNothing
 	with Unbreakable
 	with TeleportActor
+	with MultiBlock[Block]
 {
 	disableStats()
 	setBlockName("GatewayBase")
@@ -148,6 +149,7 @@ class BlockGatewayAir extends Block(Material.portal)
 	with Unbreakable
 	with Ghostly
 	with TeleportActor
+	with MultiBlock[Block]
 {
 	disableStats()
 	setBlockName("GatewayAir")
@@ -164,6 +166,23 @@ class BlockGatewayAir extends Block(Material.portal)
 		if (below.isInstanceOf[TeleportActor])
 			below.asInstanceOf[TeleportActor].teleportEntity(world, x, y - 1, z, entity)
 	}
+}
+
+trait MultiBlock[T >: Null]
+{
+	private val SubBlocksCount = 16 // block's meta is 4-bit
+	private var table: Seq[T] = null
+	
+	protected def registerSubBlocks(blocks: (Int, T)*)(implicit manifest: Manifest[T]) =
+	{
+		if (table != null)
+			throw new IllegalStateException("Sub-blocks table can be initialized only once")
+		val array = Array.fill[T](SubBlocksCount)(null)
+		blocks foreach { el => array(el._1) = el._2 }
+		table = array
+	}
+	
+	protected def subBlock(meta: Int) = table(meta)
 }
 
 trait TeleportActor
