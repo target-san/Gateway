@@ -1,20 +1,17 @@
 package targetsan.mcmods.gateway
-import net.minecraft.entity.Entity
-import net.minecraft.client.renderer.texture.IIconRegister
-import net.minecraft.block.{Block, BlockContainer}
-import net.minecraft.world.World
-import net.minecraft.tileentity.TileEntity
+import cpw.mods.fml.common.eventhandler.SubscribeEvent
+import net.minecraft.block.Block
+import net.minecraft.block.BlockContainer
 import net.minecraft.block.material.Material
-import net.minecraft.util.IIcon
-import net.minecraft.item.Item
 import net.minecraft.entity.Entity
-import net.minecraft.util.AxisAlignedBB
 import net.minecraft.entity.player.EntityPlayer
-import cpw.mods.fml.common.eventhandler.SubscribeEvent
-import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import net.minecraft.init.Blocks
+import net.minecraft.tileentity.TileEntity
 import net.minecraft.util.ChatComponentText
 import net.minecraft.world.IBlockAccess
+import net.minecraft.world.World
+import net.minecraftforge.event.entity.player.PlayerInteractEvent
+import net.minecraft.client.renderer.texture.IIconRegister
 
 object Gateway
 {
@@ -98,17 +95,50 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	with DropsNothing
 	with Unbreakable
 	with TeleportActor
-	with MultiBlock[Block]
+	with MultiBlock[SubBlock]
 {
 	disableStats()
 	setBlockName("GatewayBase")
-	setBlockTextureName("gateway:gateway")
 	setStepSound(Block.soundTypePiston)
 	
-	val Core = 0 // Default core, 
+	val Core = 0 // Default core block
 	
+	registerSubBlocks(
+		Core -> new SubBlockCore
+	)
+	
+	override def hasTileEntity(meta: Int) =
+		subBlock(meta).hasTileEntity(meta)
+
+	override def createNewTileEntity(world: World, meta: Int) =
+		subBlock(meta).createNewTileEntity(world, meta)
+
+	override def onBlockAdded(world: World, x: Int, y: Int, z: Int) =
+		subBlock(world, x, y, z).onBlockAdded(world, x, y, z)
+	
+	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int) =
+		subBlock(meta).onBlockPreDestroy(world, x, y, z, meta)
+
+	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: java.util.Random) =
+		subBlock(world, x, y, z).randomDisplayTick(world, x, y, z, random)
+	
+	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) =
+		subBlock(world, x, y, z).teleportEntity(world, x, y, z, entity)
+	
+	override def getIcon(side: Int, meta: Int) =
+		subBlock(meta).getIcon(side, meta)
+
+	override def registerBlockIcons(register: IIconRegister) =
+		allSubBlocks foreach { _.registerBlockIcons(register) }
+}
+
+class SubBlockCore extends SubBlock
+{
+	setBlockTextureName("gateway:gateway")
+
 	private val PortalHeight = 3
 	
+	override def hasTileEntity(meta: Int) = true
 	override def createNewTileEntity(world: World, meta: Int) = new TileGateway
 
 	override def onBlockAdded(world: World, x: Int, y: Int, z: Int)
@@ -168,7 +198,7 @@ class BlockGatewayAir extends Block(Material.portal)
 	with Unbreakable
 	with Ghostly
 	with TeleportActor
-	with MultiBlock[Block with TeleportActor]
+	with MultiBlock[SubBlock]
 {
 	disableStats()
 	setBlockName("GatewayAir")
@@ -192,13 +222,6 @@ class BlockGatewayAir extends Block(Material.portal)
 		subBlock(world, x, y, z).isReplaceable(world, x, y, z)
 }
 
-class SubBlock extends BlockContainer(Material.air) with TeleportActor
-{
-	override def createNewTileEntity(world: World, meta: Int): TileEntity = null
-	override def hasTileEntity(meta: Int) = false
-	
-	override def teleportEntity(w: World, x: Int, y: Int, z: Int, entity: Entity) { }
-}
 // Represents actual 'portal' block, which reacts on collisions
 class GatewayPortal extends SubBlock
 {
@@ -218,54 +241,4 @@ class GatewayPortal extends SubBlock
 class GatewayShield extends SubBlock
 {
 	override def isReplaceable(world: IBlockAccess, x: Int, y: Int, z: Int) = true
-}
-
-trait MultiBlock[T >: Null]
-{
-	private val SubBlocksCount = 16 // block's meta is 4-bit
-	private var table: Seq[T] = null
-	
-	protected def registerSubBlocks(blocks: (Int, T)*)(implicit manifest: Manifest[T]) =
-	{
-		if (table != null)
-			throw new IllegalStateException("Sub-blocks table can be initialized only once")
-		val array = Array.fill[T](SubBlocksCount)(null)
-		blocks foreach { el => array(el._1) = el._2 }
-		table = array
-	}
-	
-	protected def subBlock(meta: Int) = table(meta)
-	protected def subBlock(world: IBlockAccess, x: Int, y: Int, z: Int) = table(world.getBlockMetadata(x, y, z))
-}
-
-trait TeleportActor
-{
-	def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity)
-}
-
-trait DropsNothing extends Block
-{
-	override def getItemDropped(meta: Int, random: java.util.Random, fortune: Int): Item = null
-}
-
-trait NotACube extends Block
-{
-	override def renderAsNormalBlock = false
-	override def isOpaqueCube = false
-	override def isBlockNormalCube = false
-}
-
-trait Unbreakable extends Block
-{
-	setBlockUnbreakable()
-	setResistance(6000000.0F)
-}
-
-trait Ghostly extends Block
-{
-	setBlockBounds(0, 0, 0, 0, 0, 0)
-	
-	override def getSelectedBoundingBoxFromPool(world: World, x: Int, y: Int, z: Int) = null
-	override def getCollisionBoundingBoxFromPool(world: World, x: Int, y: Int, z: Int) = null
-	override def addCollisionBoxesToList(world: World, x: Int, y: Int, z: Int, mask: AxisAlignedBB, boxes: java.util.List[_], entity: Entity) { }
 }
