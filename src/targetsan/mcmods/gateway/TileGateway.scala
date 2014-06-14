@@ -37,9 +37,9 @@ class TileGateway extends TileEntity
 		initBase(x, y, z, player)
 		exitDim = Gateway.dimension
 		// When gateway tile is properly initialized, we construct exitpoint on the other side
-		val gateworld = Gateway.dimension
-		gateworld.setBlock(x, y, z, GatewayMod.BlockGatewayBase)
-		gateworld.getTileEntity(x, y, z).asInstanceOf[TileGateway].init(xCoord, yCoord, zCoord, worldObj.provider.dimensionId, player)
+		GatewayMod.BlockGatewayBase
+			.placeCore(Gateway.dimension, x, y, z)
+			.init(xCoord, yCoord, zCoord, worldObj.provider.dimensionId, player)
 	}
     
 	private def init(x: Int, y: Int, z: Int, dim: Int, player: EntityPlayer)

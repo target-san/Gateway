@@ -48,8 +48,9 @@ object Gateway
 			return
 		}
 		// Construct gateways on both sides
-		w.setBlock(x, y, z, GatewayMod.BlockGatewayBase)
-		w.getTileEntity(x, y, z).asInstanceOf[TileGateway].init(ex, ey, ez, player)
+		GatewayMod.BlockGatewayBase
+			.placeCore(w, x, y, z)
+			.init(ex, ey, ez, player)
 		player.addChatMessage(new ChatComponentText(s"Gateway successfully constructed from ${w.provider.getDimensionName} to ${Gateway.dimension.provider.getDimensionName}"))
 	}
 	

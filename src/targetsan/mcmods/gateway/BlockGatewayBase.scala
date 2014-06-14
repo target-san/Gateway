@@ -1,12 +1,13 @@
 package targetsan.mcmods.gateway
-import net.minecraft.block.Block
+import cpw.mods.fml.common.Mod
+import net.minecraft.block.Block
 import net.minecraft.block.BlockContainer
 import net.minecraft.block.material.Material
 import net.minecraft.client.renderer.texture.IIconRegister
 import net.minecraft.entity.Entity
 import net.minecraft.init.Blocks
-import net.minecraft.world.IBlockAccess
 import net.minecraft.world.World
+import net.minecraft.util.IIcon
 
 class BlockGatewayBase extends BlockContainer(Material.rock)
 	with DropsNothing
@@ -18,11 +19,35 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	setBlockName("GatewayBase")
 	setStepSound(Block.soundTypePiston)
 	
-	val Core = 0 // Default core block
+	val Core  = 0 // Default core block
+	val SatNW = 1
+	val SatN  = 2
+	val SatNE = 3
+	val SatE  = 4
+	val SatSE = 5
+	val SatS  = 6
+	val SatSW = 7
+	val SatW  = 8
 	
 	registerSubBlocks(
 		Core -> new SubBlockCore
+		, SatNW -> new SubBlockSatellite(-1, -1, "minecraft:obsidian")
+		, SatN  -> new SubBlockSatellite( 0, -1, "minecraft:obsidian")
+		, SatNE -> new SubBlockSatellite( 1, -1, "minecraft:obsidian")
+		, SatE  -> new SubBlockSatellite( 1,  0, "minecraft:obsidian")
+		, SatSE -> new SubBlockSatellite( 1,  1, "minecraft:obsidian")
+		, SatS  -> new SubBlockSatellite( 0,  1, "minecraft:obsidian")
+		, SatSW -> new SubBlockSatellite(-1,  1, "minecraft:obsidian")
+		, SatW  -> new SubBlockSatellite(-1,  0, "minecraft:obsidian")
 	)
+	
+	def satelliteIds = SatNW to SatW
+	
+	def placeCore(world: World, x: Int, y: Int, z: Int): TileGateway =
+	{
+		world.setBlock(x, y, z, this, Core, 3)
+		world.getTileEntity(x, y, z).asInstanceOf[TileGateway]
+	}
 	
 	override def hasTileEntity(meta: Int) =
 		subBlock(meta).hasTileEntity(meta)
@@ -51,8 +76,8 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 
 class SubBlockCore extends SubBlock
 {
-	setBlockTextureName("gateway:gateway")
-
+	protected var blockTopIcon: IIcon = null
+	
 	private val PortalHeight = 3
 	
 	override def hasTileEntity(meta: Int) = true
@@ -63,15 +88,21 @@ class SubBlockCore extends SubBlock
 		// construct multiblock
 		if (world.isRemote)
 			return
+		// Satellite platform blocks
+		for (i <- GatewayMod.BlockGatewayBase.satelliteIds)
+		{
+			val satellite = GatewayMod.BlockGatewayBase.subBlock(i).asInstanceOf[SubBlockSatellite]
+			world.setBlock(x + satellite.xOffset, y, z + satellite.zOffset, GatewayMod.BlockGatewayBase, i, 3)
+		}
 		// Anti-liquid Nether shielding
 		if (world.provider.dimensionId == Gateway.DIMENSION_ID)
 			Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalHeight, z + 1).foreach
-			{ case (x, y, z) =>
-				world.setBlock(x, y, z, GatewayMod.BlockGatewayAir, GatewayMod.BlockGatewayAir.Shield, 3)
+			{ case (x, y, z) => 
+				GatewayMod.BlockGatewayAir.placeShield(world, x, y, z)
 			}
 		// Portal column
 		for (y1 <- y+1 to y+PortalHeight )
-			world.setBlock(x, y1, z, GatewayMod.BlockGatewayAir, GatewayMod.BlockGatewayAir.Portal, 3)
+			GatewayMod.BlockGatewayAir.placePortal(world, x, y1, z)
 		
 		// Nether stone platform
 		if (world.provider.dimensionId == Gateway.DIMENSION_ID)
@@ -86,7 +117,7 @@ class SubBlockCore extends SubBlock
 	{
 		if (world.isRemote)
 			return
-		
+		// dispose everything above platform
 		Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalHeight, z + 1)
 			.foreach
 			{ case (x, y, z) =>
@@ -94,6 +125,17 @@ class SubBlockCore extends SubBlock
 					world.setBlockToAir(x, y, z)
 			}
 
+		// dispose platform except core; disposing core here would cause infinite loop
+		for (i <- GatewayMod.BlockGatewayBase.satelliteIds)
+		{
+			val satellite = GatewayMod.BlockGatewayBase.subBlock(i).asInstanceOf[SubBlockSatellite]
+			val deadBlock =
+				if (world.provider.dimensionId == Gateway.DIMENSION_ID) Blocks.stone    // stone for Nether
+				else if (satellite.isDiagonal)                          Blocks.obsidian // Obsidian for platform corners
+				else                                                    Blocks.glass    // Glass for platform sides
+			world.setBlock(x + satellite.xOffset, y, z + satellite.zOffset, deadBlock)
+		}
+		
 		world.getTileEntity(x, y, z).asInstanceOf[TileGateway].dispose
 	}
 
@@ -103,59 +145,24 @@ class SubBlockCore extends SubBlock
 			world.spawnParticle("portal", x + random.nextDouble(), y + 1.0, z + random.nextDouble(), 0.0, 1.5, 0.0)
 	}
 	
+	override def registerBlockIcons(icons: IIconRegister)
+	{
+		blockIcon = icons.registerIcon("minecraft:obsidian")
+		blockTopIcon = icons.registerIcon("minecraft:portal")
+	}
+	
+	override def getIcon(side: Int, meta: Int): IIcon =
+		if (side == 1) blockTopIcon
+		else           blockIcon
+	
 	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity)
 	{
 		world.getTileEntity(x, y, z).asInstanceOf[TileGateway].teleportEntity(entity)
 	}
 }
 
-class BlockGatewayAir extends Block(Material.portal)
-	with DropsNothing
-	with NotACube
-	with Unbreakable
-	with Ghostly
-	with TeleportActor
-	with MultiBlock[SubBlock]
+class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String) extends SubBlock
 {
-	disableStats()
-	setBlockName("GatewayAir")
-	setBlockTextureName("minecraft:stone")
-	
-	val Portal = 0
-	val Shield = 1
-	
-	registerSubBlocks(
-		Portal -> new GatewayPortal,
-		Shield -> new GatewayShield
-	)
-	
-	override def onEntityCollidedWithBlock(world: World, x: Int, y: Int, z: Int, entity: Entity) =
-		subBlock(world, x, y, z).onEntityCollidedWithBlock(world, x, y, z, entity)
-	
-	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) =
-		subBlock(world, x, y, z).teleportEntity(world, x, y, z, entity)
-		
-	override def isReplaceable(world: IBlockAccess, x: Int, y: Int, z: Int) =
-		subBlock(world, x, y, z).isReplaceable(world, x, y, z)
-}
-
-// Represents actual 'portal' block, which reacts on collisions
-class GatewayPortal extends SubBlock
-{
-	override def onEntityCollidedWithBlock(world: World, x: Int, y: Int, z: Int, entity: Entity)
-	{
-		teleportEntity(world, x, y, z, entity)
-	}
-	
-	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity)
-	{
-		val below = world.getBlock(x, y - 1, z)
-		if (below.isInstanceOf[TeleportActor])
-			below.asInstanceOf[TeleportActor].teleportEntity(world, x, y - 1, z, entity)
-	}
-}
-// Anti-liquid shield, spawns in Nether, replaceable by player
-class GatewayShield extends SubBlock
-{
-	override def isReplaceable(world: IBlockAccess, x: Int, y: Int, z: Int) = true
+	val isDiagonal = xOffset != 0 && zOffset != 0
+	setBlockTextureName(textureName)
 }

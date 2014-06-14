@@ -24,8 +24,8 @@ trait MultiBlock[T >: Null]
 		table = array
 	}
 	
-	protected def subBlock(meta: Int) = table(meta)
-	protected def subBlock(world: IBlockAccess, x: Int, y: Int, z: Int) = table(world.getBlockMetadata(x, y, z))
+	def subBlock(meta: Int) = table(meta)
+	def subBlock(world: IBlockAccess, x: Int, y: Int, z: Int) = table(world.getBlockMetadata(x, y, z))
 	
 	protected def allSubBlocks = table.toIterable.filter(_ != null)
 }
