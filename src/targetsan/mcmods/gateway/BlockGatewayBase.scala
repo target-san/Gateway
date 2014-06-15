@@ -125,10 +125,11 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String,
 		)
 			return false
 		
-		world
+		val tile = world
 			.getTileEntity(x - xOffset, y, z - zOffset)
 			.asInstanceOf[TileGateway]
-			.markForDispose(player, this.side)
+		if (tile != null)
+			tile.markForDispose(player, this.side)
 		
 		false
 	}
@@ -141,9 +142,10 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String,
 		)
 			return
 		
-		world
+		val tile = world
 			.getTileEntity(x - xOffset, y, z - zOffset)
 			.asInstanceOf[TileGateway]
-			.unmarkForDispose(this.side)
+		if (tile != null)
+			tile.unmarkForDispose(this.side)
 	}
 }
