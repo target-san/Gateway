@@ -52,7 +52,8 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	
 	def dispose(world: World, x: Int, y: Int, z: Int)
 	{
-		world.setBlock(x, y, z, Blocks.stone)
+		if (world.getBlock(x, y, z) == this)
+			world.setBlock(x, y, z, Blocks.stone)
 	}
 	
 	override def hasTileEntity(meta: Int) =
@@ -61,12 +62,6 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	override def createNewTileEntity(world: World, meta: Int) =
 		subBlock(meta).createNewTileEntity(world, meta)
 
-	override def onBlockAdded(world: World, x: Int, y: Int, z: Int) =
-		subBlock(world, x, y, z).onBlockAdded(world, x, y, z)
-	
-	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int) =
-		subBlock(meta).onBlockPreDestroy(world, x, y, z, meta)
-		
 	override def onBlockActivated(world: World, x: Int, y: Int, z: Int, player: EntityPlayer, side: Int, xTouch: Float, yTouch: Float, zTouch: Float) =
 		subBlock(world, x, y, z).onBlockActivated(world, x, y, z, player, side, xTouch, yTouch, zTouch)
 	
@@ -90,66 +85,8 @@ class SubBlockCore extends SubBlock
 {
 	protected var blockTopIcon: IIcon = null
 	
-	private val PortalHeight = 3
-	
 	override def hasTileEntity(meta: Int) = true
 	override def createNewTileEntity(world: World, meta: Int) = new TileGateway
-
-	override def onBlockAdded(world: World, x: Int, y: Int, z: Int)
-	{
-		// construct multiblock
-		if (world.isRemote)
-			return
-		// Satellite platform blocks
-		for (i <- GatewayMod.BlockGatewayBase.satelliteIds)
-		{
-			val satellite = GatewayMod.BlockGatewayBase.subBlock(i).asInstanceOf[SubBlockSatellite]
-			world.setBlock(x + satellite.xOffset, y, z + satellite.zOffset, GatewayMod.BlockGatewayBase, i, 3)
-		}
-		// Anti-liquid Nether shielding
-		if (world.provider.dimensionId == Gateway.DIMENSION_ID)
-			Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalHeight, z + 1).foreach
-			{ case (x, y, z) => 
-				GatewayMod.BlockGatewayAir.placeShield(world, x, y, z)
-			}
-		// Portal column
-		for (y1 <- y+1 to y+PortalHeight )
-			GatewayMod.BlockGatewayAir.placePortal(world, x, y1, z)
-		
-		// Nether stone platform
-		if (world.provider.dimensionId == Gateway.DIMENSION_ID)
-			Utils.enumVolume(world, x - 2, y, z - 2, x + 2, y, z + 2).foreach
-			{ case (x, y, z) =>
-				if (world.isAirBlock(x, y, z))
-					world.setBlock(x, y, z, Blocks.stone)
-			}
-	}
-	
-	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int)
-	{
-		if (world.isRemote)
-			return
-		// dispose everything above platform
-		Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalHeight, z + 1)
-			.foreach
-			{ case (x, y, z) =>
-				if (world.getBlock(x, y, z) == GatewayMod.BlockGatewayAir)
-					world.setBlockToAir(x, y, z)
-			}
-
-		// dispose platform except core; disposing core here would cause infinite loop
-		for (i <- GatewayMod.BlockGatewayBase.satelliteIds)
-		{
-			val satellite = GatewayMod.BlockGatewayBase.subBlock(i).asInstanceOf[SubBlockSatellite]
-			val deadBlock =
-				if (world.provider.dimensionId == Gateway.DIMENSION_ID) Blocks.stone    // stone for Nether
-				else if (satellite.isDiagonal)                          Blocks.obsidian // Obsidian for platform corners
-				else                                                    Blocks.glass    // Glass for platform sides
-			world.setBlock(x + satellite.xOffset, y, z + satellite.zOffset, deadBlock)
-		}
-		
-		world.getTileEntity(x, y, z).asInstanceOf[TileGateway].dispose
-	}
 
 	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: java.util.Random)
 	{
