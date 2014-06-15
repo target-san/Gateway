@@ -16,6 +16,7 @@ import net.minecraft.network.play.server.S07PacketRespawn
 import scala.collection.JavaConversions._
 import net.minecraft.network.play.server.S1DPacketEntityEffect
 import net.minecraft.potion.PotionEffect
+import net.minecraft.util.ChatComponentText
 
 class TileGateway extends TileEntity
 {
@@ -24,6 +25,15 @@ class TileGateway extends TileEntity
 	private var exitZ = 0
 	private var exitDim: WorldServer = null
 	private var owner = ""
+	private var flags = 0
+	
+	private val DisposeMarksMask = 0x0F
+	private def sideToFlag(side: Int): Int = 
+	{
+		if (! (0 to 3 contains side))
+			throw new IllegalArgumentException(s"Disposal marks: side index $side is not in range [0..3]")
+		1 << side
+	}
 	// This list is processed the same tick it's initialized, so it shouldn't be stored in NBT
 	private var teleportQueue: List[Entity] = Nil
 		
@@ -42,32 +52,13 @@ class TileGateway extends TileEntity
 			.init(xCoord, yCoord, zCoord, worldObj.provider.dimensionId, player)
 	}
     
-	private def init(x: Int, y: Int, z: Int, dim: Int, player: EntityPlayer)
-	{
-		if (worldObj.provider.dimensionId != Gateway.DIMENSION_ID)
-			throw new IllegalStateException("Tile can be initialized in such a way only from Nether")
-		initBase(x, y, z, player)
-		exitDim = Utils.world(dim)
-	}
-	
-	private def initBase(ex: Int, ey: Int, ez: Int, player: EntityPlayer)
-	{
-		if (!owner.isEmpty()) // owner and other params are set only once
-			throw new IllegalStateException("Gateway parameters are set only once")
-		exitX = ex
-		exitY = ey
-		exitZ = ez
-		owner = player.getGameProfile().getId()
-		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
-	}
-    
 	def dispose()
 	{
 		if (worldObj.isRemote)
 			return
 		// This would trigger removal of the gateway's endpoint located in Nether
 		if (worldObj.provider.dimensionId != Gateway.DIMENSION_ID)
-			Gateway.dimension.setBlock(exitX, exitY, exitZ, Blocks.stone)
+			GatewayMod.BlockGatewayBase.dispose(Gateway.dimension, exitX, exitY, exitZ)
 			
 		owner = null
 		exitX = 0
@@ -86,18 +77,29 @@ class TileGateway extends TileEntity
 	    	teleportQueue +:= scheduled
 	}
 	
-	private def getBottomMount(entity: Entity): Entity = 
-		if (entity.ridingEntity != null) getBottomMount(entity.ridingEntity)
-		else entity
-	
-	private def checkGatewayValid
+	def markForDispose(player: EntityPlayer, side: Int)
 	{
-		if (owner == null || owner.isEmpty)
-			throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
-		if (exitDim == null)
-			throw new IllegalStateException("Gateway not initialized properly: exit dimension reference is NULL")
-		if (!exitDim.getTileEntity(exitX, exitY, exitZ).isInstanceOf[TileGateway])
-			throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
+		if (worldObj.isRemote)
+			return
+		
+		if (player.getGameProfile().getId() != owner)
+		{
+			player.addChatMessage(new ChatComponentText(s"Only the owner of this gateway, $owner, can severe it"))
+			return
+		}
+		flags |= sideToFlag(side)
+		if ((flags & DisposeMarksMask) != DisposeMarksMask)
+			return
+
+		GatewayMod.BlockGatewayBase.dispose(worldObj, xCoord, yCoord, zCoord)
+		player.addChatMessage(new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitDim.provider.getDimensionName} was severed"))
+	}
+	
+	def unmarkForDispose(side: Int)
+	{
+		if (worldObj.isRemote)
+			return
+		flags &= ~sideToFlag(side)
 	}
 	
 	// Update func
@@ -122,6 +124,7 @@ class TileGateway extends TileEntity
 		exitZ = pos(2)
 		exitDim = Utils.world(pos(3))
 		owner = tag.getString("owner")
+		flags = tag.getInteger("flags")
 	}
 	
 	override def writeToNBT(tag: NBTTagCompound)
@@ -131,6 +134,40 @@ class TileGateway extends TileEntity
 		super.writeToNBT(tag)
 		tag.setIntArray("exitPos", Array(exitX, exitY, exitZ, exitDim.provider.dimensionId))
 		tag.setString("owner", owner)
+		tag.setInteger("flags", flags)
+	}
+	
+	private def init(x: Int, y: Int, z: Int, dim: Int, player: EntityPlayer)
+	{
+		if (worldObj.provider.dimensionId != Gateway.DIMENSION_ID)
+			throw new IllegalStateException("Tile can be initialized in such a way only from Nether")
+		initBase(x, y, z, player)
+		exitDim = Utils.world(dim)
+	}
+	
+	private def initBase(ex: Int, ey: Int, ez: Int, player: EntityPlayer)
+	{
+		if (!owner.isEmpty()) // owner and other params are set only once
+			throw new IllegalStateException("Gateway parameters are set only once")
+		exitX = ex
+		exitY = ey
+		exitZ = ez
+		owner = player.getGameProfile().getId()
+		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
+	}
+    
+	private def getBottomMount(entity: Entity): Entity = 
+		if (entity.ridingEntity != null) getBottomMount(entity.ridingEntity)
+		else entity
+	
+	private def checkGatewayValid
+	{
+		if (owner == null || owner.isEmpty)
+			throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
+		if (exitDim == null)
+			throw new IllegalStateException("Gateway not initialized properly: exit dimension reference is NULL")
+		if (!exitDim.getTileEntity(exitX, exitY, exitZ).isInstanceOf[TileGateway])
+			throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
 	}
 	
 	// Teleport helpers

@@ -5,9 +5,10 @@ import net.minecraft.block.BlockContainer
 import net.minecraft.block.material.Material
 import net.minecraft.client.renderer.texture.IIconRegister
 import net.minecraft.entity.Entity
-import net.minecraft.init.Blocks
+import net.minecraft.init.{Blocks, Items}
 import net.minecraft.world.World
 import net.minecraft.util.IIcon
+import net.minecraft.entity.player.EntityPlayer
 
 class BlockGatewayBase extends BlockContainer(Material.rock)
 	with DropsNothing
@@ -32,13 +33,13 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	registerSubBlocks(
 		Core -> new SubBlockCore
 		, SatNW -> new SubBlockSatellite(-1, -1, "minecraft:obsidian")
-		, SatN  -> new SubBlockSatellite( 0, -1, "minecraft:obsidian")
+		, SatN  -> new SubBlockSatellite( 0, -1, "minecraft:obsidian", 0)
 		, SatNE -> new SubBlockSatellite( 1, -1, "minecraft:obsidian")
-		, SatE  -> new SubBlockSatellite( 1,  0, "minecraft:obsidian")
+		, SatE  -> new SubBlockSatellite( 1,  0, "minecraft:obsidian", 1)
 		, SatSE -> new SubBlockSatellite( 1,  1, "minecraft:obsidian")
-		, SatS  -> new SubBlockSatellite( 0,  1, "minecraft:obsidian")
+		, SatS  -> new SubBlockSatellite( 0,  1, "minecraft:obsidian", 2)
 		, SatSW -> new SubBlockSatellite(-1,  1, "minecraft:obsidian")
-		, SatW  -> new SubBlockSatellite(-1,  0, "minecraft:obsidian")
+		, SatW  -> new SubBlockSatellite(-1,  0, "minecraft:obsidian", 3)
 	)
 	
 	def satelliteIds = SatNW to SatW
@@ -47,6 +48,11 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	{
 		world.setBlock(x, y, z, this, Core, 3)
 		world.getTileEntity(x, y, z).asInstanceOf[TileGateway]
+	}
+	
+	def dispose(world: World, x: Int, y: Int, z: Int)
+	{
+		world.setBlock(x, y, z, Blocks.stone)
 	}
 	
 	override def hasTileEntity(meta: Int) =
@@ -60,6 +66,12 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	
 	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int) =
 		subBlock(meta).onBlockPreDestroy(world, x, y, z, meta)
+		
+	override def onBlockActivated(world: World, x: Int, y: Int, z: Int, player: EntityPlayer, side: Int, xTouch: Float, yTouch: Float, zTouch: Float) =
+		subBlock(world, x, y, z).onBlockActivated(world, x, y, z, player, side, xTouch, yTouch, zTouch)
+	
+	override def onNeighborBlockChange(world: World, x: Int, y: Int, z: Int, block: Block) = 
+		subBlock(world, x, y, z).onNeighborBlockChange(world, x, y, z, block)
 
 	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: java.util.Random) =
 		subBlock(world, x, y, z).randomDisplayTick(world, x, y, z, random)
@@ -161,8 +173,40 @@ class SubBlockCore extends SubBlock
 	}
 }
 
-class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String) extends SubBlock
+class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String, private val side: Int = -1) extends SubBlock
 {
 	val isDiagonal = xOffset != 0 && zOffset != 0
 	setBlockTextureName(textureName)
+	
+	override def onBlockActivated(world: World, x: Int, y: Int, z: Int, player: EntityPlayer, side: Int, xTouch: Float, yTouch: Float, zTouch: Float): Boolean =
+	{
+		if (world.isRemote ||
+			isDiagonal ||
+			side != 1 ||
+			player.getHeldItem == null ||
+			player.getHeldItem.getItem != Items.flint_and_steel
+		)
+			return false
+		
+		world
+			.getTileEntity(x - xOffset, y, z - zOffset)
+			.asInstanceOf[TileGateway]
+			.markForDispose(player, this.side)
+		
+		false
+	}
+	
+	override def onNeighborBlockChange(world: World, x: Int, y: Int, z: Int, block: Block)
+	{
+		if (world.isRemote ||
+			isDiagonal ||
+			world.getBlock(x, y + 1, z) == Blocks.fire
+		)
+			return
+		
+		world
+			.getTileEntity(x - xOffset, y, z - zOffset)
+			.asInstanceOf[TileGateway]
+			.unmarkForDispose(this.side)
+	}
 }
