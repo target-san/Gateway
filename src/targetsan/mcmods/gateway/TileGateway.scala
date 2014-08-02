@@ -19,11 +19,14 @@ import net.minecraft.util.ChatComponentText
 
 class TileGateway extends TileEntity
 {
+	private val EmptyOwner = new java.util.UUID(0L, 0L)
+	
 	private var exitX = 0
 	private var exitY = 0
 	private var exitZ = 0
 	private var exitDim: WorldServer = null
-	private var owner = ""
+	private var owner = EmptyOwner
+	private var ownerName = ""
 	private var flags = 0
 	
 	private val DisposeMarksMask = 0x0F
@@ -70,7 +73,7 @@ class TileGateway extends TileEntity
 		
 		if (player.getGameProfile().getId() != owner)
 		{
-			player.addChatMessage(new ChatComponentText(s"Only the owner of this gateway, $owner, can severe it"))
+			player.addChatMessage(new ChatComponentText(s"Only the owner of this gateway, $ownerName, can severe it"))
 			return
 		}
 		flags |= sideToFlag(side)
@@ -115,7 +118,8 @@ class TileGateway extends TileEntity
 		exitY = pos(1)
 		exitZ = pos(2)
 		exitDim = Utils.world(pos(3))
-		owner = tag.getString("owner")
+		owner = java.util.UUID.fromString(tag.getString("owner"))
+		ownerName = tag.getString("ownerName")
 		flags = tag.getInteger("flags")
 	}
 	
@@ -125,7 +129,8 @@ class TileGateway extends TileEntity
 			return
 		super.writeToNBT(tag)
 		tag.setIntArray("exitPos", Array(exitX, exitY, exitZ, exitDim.provider.dimensionId))
-		tag.setString("owner", owner)
+		tag.setString("owner", owner.toString)
+		tag.setString("ownerName", ownerName)
 		tag.setInteger("flags", flags)
 	}
 	
@@ -139,12 +144,13 @@ class TileGateway extends TileEntity
 	
 	private def initBase(ex: Int, ey: Int, ez: Int, player: EntityPlayer)
 	{
-		if (!owner.isEmpty()) // owner and other params are set only once
+		if (owner != EmptyOwner) // owner and other params are set only once
 			throw new IllegalStateException("Gateway parameters are set only once")
 		exitX = ex
 		exitY = ey
 		exitZ = ez
 		owner = player.getGameProfile().getId()
+		ownerName = player.getGameProfile().getName()
 		constructMultiblock(worldObj, xCoord, yCoord, zCoord)
 		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
 	}
@@ -221,7 +227,7 @@ class TileGateway extends TileEntity
 	
 	private def checkGatewayValid
 	{
-		if (owner == null || owner.isEmpty)
+		if (owner == null || owner == EmptyOwner)
 			throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
 		if (exitDim == null)
 			throw new IllegalStateException("Gateway not initialized properly: exit dimension reference is NULL")
