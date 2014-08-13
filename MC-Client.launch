@@ -12,7 +12,7 @@
 <listEntry value="org.eclipse.debug.ui.launchGroup.run"/>
 </listAttribute>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="net.minecraft.launchwrapper.Launch"/>
-<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--version 1.6 --tweakClass cpw.mods.fml.common.launcher.FMLTweaker --accessToken player --username player"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--version 1.7 --tweakClass cpw.mods.fml.common.launcher.FMLTweaker --accessToken player --username player --userProperties {} --assetIndex 1.7.10"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="Gateway"/>
 <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dfml.ignoreInvalidMinecraftCertificates=true -Djava.library.path=&quot;${project_loc}/build/natives&quot;"/>
 <stringAttribute key="org.eclipse.jdt.launching.WORKING_DIRECTORY" value="${project_loc}/run"/>
