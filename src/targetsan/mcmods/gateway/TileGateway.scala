@@ -24,7 +24,7 @@ class TileGateway extends TileEntity
 	private var exitX = 0
 	private var exitY = 0
 	private var exitZ = 0
-	private var exitDim: WorldServer = null
+	private var exitDim: World = null
 	private var owner = EmptyOwner
 	private var ownerName = ""
 	private var flags = 0
@@ -40,20 +40,25 @@ class TileGateway extends TileEntity
 	}
 	// This list is processed the same tick it's initialized, so it shouldn't be stored in NBT
 	private var teleportQueue: List[Entity] = Nil
+	
+	def init(endpoint: TileGateway, owner: EntityPlayer): Unit =
+		init(endpoint.worldObj, endpoint.xCoord, endpoint.yCoord, endpoint.zCoord, owner)
+	
+	def init(exitDim: Int, ex: Int, ey: Int, ez: Int, owner: EntityPlayer): Unit =
+		init(Utils.world(exitDim), ex, ey, ez, owner)
 		
-	def init(x: Int, y: Int, z: Int, player: EntityPlayer)
+	def init(exitWorld: World, ex: Int, ey: Int, ez: Int, player: EntityPlayer): Unit =
 	{
-		if (worldObj.isRemote)
-			return
-		// This init can be called only from non-gateway dimension
-		if (worldObj.provider.dimensionId == Gateway.DIMENSION_ID)
-			throw new IllegalStateException("Tile cannot be initialized in such a way from Nether")
-		initBase(x, y, z, player)
-		exitDim = Gateway.dimension
-		// When gateway tile is properly initialized, we construct exitpoint on the other side
-		GatewayMod.BlockGatewayBase
-			.placeCore(Gateway.dimension, x, y, z)
-			.init(xCoord, yCoord, zCoord, worldObj.provider.dimensionId, player)
+		if (owner != EmptyOwner) // owner and other params are set only once
+			throw new IllegalStateException("Gateway parameters are set only once")
+		exitX = ex
+		exitY = ey
+		exitZ = ez
+		owner = player.getGameProfile().getId()
+		ownerName = player.getGameProfile().getName()
+		exitDim = exitWorld
+		constructMultiblock(worldObj, xCoord, yCoord, zCoord)
+		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
 	}
     
 	def teleportEntity(entity: Entity)
@@ -132,27 +137,6 @@ class TileGateway extends TileEntity
 		tag.setString("owner", owner.toString)
 		tag.setString("ownerName", ownerName)
 		tag.setInteger("flags", flags)
-	}
-	
-	private def init(x: Int, y: Int, z: Int, dim: Int, player: EntityPlayer)
-	{
-		if (worldObj.provider.dimensionId != Gateway.DIMENSION_ID)
-			throw new IllegalStateException("Tile can be initialized in such a way only from Nether")
-		initBase(x, y, z, player)
-		exitDim = Utils.world(dim)
-	}
-	
-	private def initBase(ex: Int, ey: Int, ez: Int, player: EntityPlayer)
-	{
-		if (owner != EmptyOwner) // owner and other params are set only once
-			throw new IllegalStateException("Gateway parameters are set only once")
-		exitX = ex
-		exitY = ey
-		exitZ = ez
-		owner = player.getGameProfile().getId()
-		ownerName = player.getGameProfile().getName()
-		constructMultiblock(worldObj, xCoord, yCoord, zCoord)
-		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
 	}
 	
 	private def dispose()
