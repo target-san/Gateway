@@ -6,3 +6,5 @@
 /.cache
 /.classpath
 /.project
+/.worksheet
+*.sc
