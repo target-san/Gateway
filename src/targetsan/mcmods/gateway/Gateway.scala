@@ -86,15 +86,16 @@ object Gateway
 		val to = Gateway.dimension
 		// Forbid constructing gateways from nether
 		if (from.provider.dimensionId == Gateway.DIMENSION_ID)
-			return Failure(new RuntimeException("Gateways cannot be constructed from Nether"))
-		// Check if we can place endpoint on the other side
+			return Failure(new Exception("Gateways cannot be constructed from Nether"))
+		// Compute destination coordinates; TODO: implement volume lookup for optimal location 
 		def mapCoord(c: Int) = Math.round(c * from.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt
+		
 		val ex = mapCoord(x)
 		val ey = (to.provider.getActualHeight - 1) / 2
 		val ez = mapCoord(z)
-		// Check if we have 
+		// Check if destination point is free
 		if (!isDestinationFree(to, ex, ey, ez))
-			return Failure(new RuntimeException("Gateway cannot be constructed here - there's another gateway too near on the other side"))
+			return Failure(new Exception("Gateway cannot be constructed here - there's another gateway too near on the other side"))
 
 		Success((ex, ey, ez))
 	}

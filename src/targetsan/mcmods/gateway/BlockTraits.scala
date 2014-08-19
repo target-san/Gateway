@@ -27,7 +27,7 @@ trait MultiBlock[T >: Null]
 	def subBlock(meta: Int) = table(meta)
 	def subBlock(world: IBlockAccess, x: Int, y: Int, z: Int) = table(world.getBlockMetadata(x, y, z))
 	
-	protected def allSubBlocks = table.toIterable.filter(_ != null)
+	protected def allSubBlocks = table.zipWithIndex.filter(_  != null)
 }
 // Not actually a trait, but a base class for all sub-blocks
 class SubBlock extends BlockContainer(Material.air) with TeleportActor

@@ -32,17 +32,18 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	
 	registerSubBlocks(
 		Core -> new SubBlockCore
-		, SatNW -> new SubBlockSatellite(-1, -1, "minecraft:obsidian")
-		, SatN  -> new SubBlockSatellite( 0, -1, "minecraft:obsidian", 0)
-		, SatNE -> new SubBlockSatellite( 1, -1, "minecraft:obsidian")
-		, SatE  -> new SubBlockSatellite( 1,  0, "minecraft:obsidian", 1)
-		, SatSE -> new SubBlockSatellite( 1,  1, "minecraft:obsidian")
-		, SatS  -> new SubBlockSatellite( 0,  1, "minecraft:obsidian", 2)
-		, SatSW -> new SubBlockSatellite(-1,  1, "minecraft:obsidian")
-		, SatW  -> new SubBlockSatellite(-1,  0, "minecraft:obsidian", 3)
+		, SatNW -> new SubBlockSatellite( -1, -1, "minecraft:obsidian")
+		, SatN  -> new SubBlockSatellite(  0, -1, "minecraft:obsidian", 0)
+		, SatNE -> new SubBlockSatellite(  1, -1, "minecraft:obsidian")
+		, SatE  -> new SubBlockSatellite(  1,  0, "minecraft:obsidian", 1)
+		, SatSE -> new SubBlockSatellite(  1,  1, "minecraft:obsidian")
+		, SatS  -> new SubBlockSatellite(  0,  1, "minecraft:obsidian", 2)
+		, SatSW -> new SubBlockSatellite( -1,  1, "minecraft:obsidian")
+		, SatW  -> new SubBlockSatellite( -1,  0, "minecraft:obsidian", 3)
 	)
 	
-	def satelliteIds = SatNW to SatW
+	def cores      = allSubBlocks.filter(_._1.isInstanceOf[SubBlockCore]).map(i => (i._1.asInstanceOf[SubBlockCore], i._2))
+	def satellites = allSubBlocks.filter(_._1.isInstanceOf[SubBlockSatellite]).map(i => (i._1.asInstanceOf[SubBlockSatellite], i._2))
 	
 	def placeCore(world: World, x: Int, y: Int, z: Int): TileGateway =
 	{
@@ -78,7 +79,7 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 		subBlock(meta).getIcon(side, meta)
 
 	override def registerBlockIcons(register: IIconRegister) =
-		allSubBlocks foreach { _.registerBlockIcons(register) }
+		allSubBlocks foreach { _._1.registerBlockIcons(register) }
 }
 
 class SubBlockCore extends SubBlock

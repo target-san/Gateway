@@ -16,6 +16,8 @@ import net.minecraft.network.play.server.S07PacketRespawn
 import net.minecraft.network.play.server.S1DPacketEntityEffect
 import net.minecraft.potion.PotionEffect
 import net.minecraft.util.ChatComponentText
+import net.minecraft.util.ChatStyle
+import net.minecraft.util.EnumChatFormatting
 
 class TileGateway extends TileEntity
 {
@@ -78,7 +80,10 @@ class TileGateway extends TileEntity
 		
 		if (player.getGameProfile().getId() != owner)
 		{
-			player.addChatMessage(new ChatComponentText(s"Only the owner of this gateway, $ownerName, can severe it"))
+			player.addChatMessage(
+				new ChatComponentText(s"Only the owner of this gateway, $ownerName, can severe it")
+				.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
+			)
 			return
 		}
 		flags |= sideToFlag(side)
@@ -86,7 +91,10 @@ class TileGateway extends TileEntity
 			return
 
 		GatewayMod.BlockGatewayBase.dispose(worldObj, xCoord, yCoord, zCoord)
-		player.addChatMessage(new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitDim.provider.getDimensionName} was severed"))
+		player.addChatMessage(
+			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitDim.provider.getDimensionName} was severed")
+			.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
+		)
 	}
 	
 	def unmarkForDispose(side: Int)
@@ -158,11 +166,8 @@ class TileGateway extends TileEntity
 	private def constructMultiblock(world: World, x: Int, y: Int, z: Int)
 	{
 		// Satellite platform blocks
-		for (i <- GatewayMod.BlockGatewayBase.satelliteIds)
-		{
-			val satellite = GatewayMod.BlockGatewayBase.subBlock(i).asInstanceOf[SubBlockSatellite]
-			world.setBlock(x + satellite.xOffset, y, z + satellite.zOffset, GatewayMod.BlockGatewayBase, i, 3)
-		}
+		for ((sat, i) <- GatewayMod.BlockGatewayBase.satellites)
+			world.setBlock(x + sat.xOffset, y, z + sat.zOffset, GatewayMod.BlockGatewayBase, i, 3)
 		// Anti-liquid Nether shielding
 		if (world.provider.dimensionId == Gateway.DIMENSION_ID)
 			Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalHeight, z + 1).foreach
@@ -193,14 +198,13 @@ class TileGateway extends TileEntity
 			}
 
 		// dispose platform except core; disposing core here would cause infinite loop
-		for (i <- GatewayMod.BlockGatewayBase.satelliteIds)
+		for ((sat, _) <- GatewayMod.BlockGatewayBase.satellites)
 		{
-			val satellite = GatewayMod.BlockGatewayBase.subBlock(i).asInstanceOf[SubBlockSatellite]
 			val deadBlock =
 				if (world.provider.dimensionId == Gateway.DIMENSION_ID) Blocks.stone    // stone for Nether
-				else if (satellite.isDiagonal)                          Blocks.obsidian // Obsidian for platform corners
+				else if (sat.isDiagonal)                                Blocks.obsidian // Obsidian for platform corners
 				else                                                    Blocks.glass    // Glass for platform sides
-			world.setBlock(x + satellite.xOffset, y, z + satellite.zOffset, deadBlock)
+			world.setBlock(x + sat.xOffset, y, z + sat.zOffset, deadBlock)
 		}
 		
 	}
