@@ -11,7 +11,7 @@ class BlockGatewayAir extends Block(Material.portal)
 	with Unbreakable
 	with Ghostly
 	with TeleportActor
-	with MultiBlock[SubBlock]
+	with MetaBlock[SubBlock]
 {
 	disableStats()
 	setBlockName("GatewayAir")

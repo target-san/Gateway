@@ -10,24 +10,25 @@ import net.minecraft.block.BlockContainer
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.block.material.Material
 
-trait MultiBlock[T >: Null]
+trait MetaBlock[T >: Null]
 {
 	private val SubBlocksCount = 16 // block's meta is 4-bit
-	private var table: Seq[T] = null
+	private var table: Map[Int, T] = null
 	
 	protected def registerSubBlocks(blocks: (Int, T)*)(implicit manifest: Manifest[T]) =
 	{
 		if (table != null)
 			throw new IllegalStateException("Sub-blocks table can be initialized only once")
-		val array = Array.fill[T](SubBlocksCount)(null)
-		blocks foreach { el => array(el._1) = el._2 }
-		table = array
+		val metaRange = 0 until SubBlocksCount
+		if (blocks exists { i => !(metaRange contains i._1) })
+			throw new IllegalArgumentException(s"Sub-block indices must be in range [0..${SubBlocksCount})")
+		table = blocks.toMap
 	}
 	
 	def subBlock(meta: Int) = table(meta)
 	def subBlock(world: IBlockAccess, x: Int, y: Int, z: Int) = table(world.getBlockMetadata(x, y, z))
 	
-	protected def allSubBlocks = table.zipWithIndex.filter(_  != null)
+	protected def allSubBlocks = table
 }
 // Not actually a trait, but a base class for all sub-blocks
 class SubBlock extends BlockContainer(Material.air) with TeleportActor

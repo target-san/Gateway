@@ -14,7 +14,7 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	with DropsNothing
 	with Unbreakable
 	with TeleportActor
-	with MultiBlock[SubBlock]
+	with MetaBlock[SubBlock]
 {
 	disableStats()
 	setBlockName("GatewayBase")
@@ -31,7 +31,7 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	val SatW  = 8
 	
 	registerSubBlocks(
-		Core -> new SubBlockCore
+		Core -> new SubBlockCore(new SimpleEndpoint)
 		, SatNW -> new SubBlockSatellite( -1, -1, "minecraft:obsidian")
 		, SatN  -> new SubBlockSatellite(  0, -1, "minecraft:obsidian", 0)
 		, SatNE -> new SubBlockSatellite(  1, -1, "minecraft:obsidian")
@@ -42,8 +42,11 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 		, SatW  -> new SubBlockSatellite( -1,  0, "minecraft:obsidian", 3)
 	)
 	
-	def cores      = allSubBlocks.filter(_._1.isInstanceOf[SubBlockCore]).map(i => (i._1.asInstanceOf[SubBlockCore], i._2))
-	def satellites = allSubBlocks.filter(_._1.isInstanceOf[SubBlockSatellite]).map(i => (i._1.asInstanceOf[SubBlockSatellite], i._2))
+	private def subsOfType[T <: SubBlock](implicit m: Manifest[T]) =
+		allSubBlocks withFilter { i => m.erasure.isInstance(i._2) } map { i => (i._1, i._2.asInstanceOf[T]) }
+	
+	def cores      = subsOfType[SubBlockCore]
+	def satellites = subsOfType[SubBlockSatellite]
 	
 	def placeCore(world: World, x: Int, y: Int, z: Int): TileGateway =
 	{
@@ -79,10 +82,19 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 		subBlock(meta).getIcon(side, meta)
 
 	override def registerBlockIcons(register: IIconRegister) =
-		allSubBlocks foreach { _._1.registerBlockIcons(register) }
+		allSubBlocks foreach { _._2.registerBlockIcons(register) }
 }
 
-class SubBlockCore extends SubBlock
+trait Endpoint
+{
+	val PortalPillarHeight = 3
+	
+	def canAssembleHere(world: World, x: Int, y: Int, z: Int): Boolean
+	def assemble(world: World, x: Int, y: Int, z: Int): Unit
+	def disassemble(world: World, x: Int, y: Int, z: Int): Unit
+}
+
+class SubBlockCore(val multiblock: Endpoint) extends SubBlock
 {
 	protected var blockTopIcon: IIcon = null
 	
@@ -108,6 +120,55 @@ class SubBlockCore extends SubBlock
 	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity)
 	{
 		world.getTileEntity(x, y, z).asInstanceOf[TileGateway].teleportEntity(entity)
+	}
+}
+
+class SimpleEndpoint extends Endpoint
+{
+	override def canAssembleHere(w: World, x: Int, y: Int, z: Int) =
+		w.getBlock(x, y, z) == Blocks.redstone_block &&
+		// corners
+		w.getBlock(x - 1, y, z - 1) == Blocks.obsidian &&
+		w.getBlock(x + 1, y, z - 1) == Blocks.obsidian &&
+		w.getBlock(x - 1, y, z + 1) == Blocks.obsidian &&
+		w.getBlock(x + 1, y, z + 1) == Blocks.obsidian &&
+		// sides
+		w.getBlock(x - 1, y, z) == Blocks.glass &&
+		w.getBlock(x + 1, y, z) == Blocks.glass &&
+		w.getBlock(x, y, z - 1) == Blocks.glass &&
+		w.getBlock(x, y, z + 1) == Blocks.glass
+
+	override def assemble(world: World, x: Int, y: Int, z: Int) =
+	{
+		// Core
+		world.setBlock(x, y, z, GatewayMod.BlockGatewayBase , GatewayMod.BlockGatewayBase.Core, 3)
+		// Satellite platform blocks
+		for ((i, sat) <- GatewayMod.BlockGatewayBase.satellites)
+			world.setBlock(x + sat.xOffset, y, z + sat.zOffset, GatewayMod.BlockGatewayBase, i, 3)
+		// Portal column
+		for (y1 <- y+1 to y+PortalPillarHeight )
+			GatewayMod.BlockGatewayAir.placePortal(world, x, y1, z)
+	}
+
+	override def disassemble(world: World, x: Int, y: Int, z: Int) =
+	{
+		// dispose everything above platform
+		Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
+			.foreach
+			{ case (x, y, z) =>
+				if (world.getBlock(x, y, z) == GatewayMod.BlockGatewayAir)
+					world.setBlockToAir(x, y, z)
+			}
+
+		// dispose platform except core; disposing core here would cause infinite loop
+		for ((_, sat) <- GatewayMod.BlockGatewayBase.satellites)
+		{
+			val deadBlock =
+				if (world.provider.dimensionId == Gateway.DIMENSION_ID) Blocks.stone    // stone for Nether
+				else if (sat.isDiagonal)                                Blocks.obsidian // Obsidian for platform corners
+				else                                                    Blocks.glass    // Glass for platform sides
+			world.setBlock(x + sat.xOffset, y, z + sat.zOffset, deadBlock)
+		}
 	}
 }
 

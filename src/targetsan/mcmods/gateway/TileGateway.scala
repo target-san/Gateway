@@ -59,7 +59,7 @@ class TileGateway extends TileEntity
 		owner = player.getGameProfile().getId()
 		ownerName = player.getGameProfile().getName()
 		exitDim = exitWorld
-		constructMultiblock(worldObj, xCoord, yCoord, zCoord)
+		//constructMultiblock(worldObj, xCoord, yCoord, zCoord)
 		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
 	}
     
@@ -152,7 +152,7 @@ class TileGateway extends TileEntity
 		if (worldObj.isRemote)
 			return
 			
-		disposeMultiblock(worldObj, xCoord, yCoord, zCoord)
+		//disposeMultiblock(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
 		GatewayMod.BlockGatewayBase.dispose(exitDim, exitX, exitY, exitZ)
 			
@@ -163,52 +163,6 @@ class TileGateway extends TileEntity
 		exitDim = null
 	}
 	
-	private def constructMultiblock(world: World, x: Int, y: Int, z: Int)
-	{
-		// Satellite platform blocks
-		for ((sat, i) <- GatewayMod.BlockGatewayBase.satellites)
-			world.setBlock(x + sat.xOffset, y, z + sat.zOffset, GatewayMod.BlockGatewayBase, i, 3)
-		// Anti-liquid Nether shielding
-		if (world.provider.dimensionId == Gateway.DIMENSION_ID)
-			Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalHeight, z + 1).foreach
-			{ case (x, y, z) => 
-				GatewayMod.BlockGatewayAir.placeShield(world, x, y, z)
-			}
-		// Portal column
-		for (y1 <- y+1 to y+PortalHeight )
-			GatewayMod.BlockGatewayAir.placePortal(world, x, y1, z)
-		
-		// Nether stone platform
-		if (world.provider.dimensionId == Gateway.DIMENSION_ID)
-			Utils.enumVolume(world, x - 2, y, z - 2, x + 2, y, z + 2).foreach
-			{ case (x, y, z) =>
-				if (world.isAirBlock(x, y, z))
-					world.setBlock(x, y, z, Blocks.stone)
-			}
-	}
-	
-	private def disposeMultiblock(world: World, x: Int, y: Int, z: Int)
-	{
-		// dispose everything above platform
-		Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalHeight, z + 1)
-			.foreach
-			{ case (x, y, z) =>
-				if (world.getBlock(x, y, z) == GatewayMod.BlockGatewayAir)
-					world.setBlockToAir(x, y, z)
-			}
-
-		// dispose platform except core; disposing core here would cause infinite loop
-		for ((sat, _) <- GatewayMod.BlockGatewayBase.satellites)
-		{
-			val deadBlock =
-				if (world.provider.dimensionId == Gateway.DIMENSION_ID) Blocks.stone    // stone for Nether
-				else if (sat.isDiagonal)                                Blocks.obsidian // Obsidian for platform corners
-				else                                                    Blocks.glass    // Glass for platform sides
-			world.setBlock(x + sat.xOffset, y, z + sat.zOffset, deadBlock)
-		}
-		
-	}
-    
 	private def getBottomMount(entity: Entity): Entity = 
 		if (entity.ridingEntity != null) getBottomMount(entity.ridingEntity)
 		else entity
