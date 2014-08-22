@@ -90,7 +90,7 @@ class TileGateway extends TileEntity
 		if ((flags & DisposeMarksMask) != DisposeMarksMask)
 			return
 
-		GatewayMod.BlockGatewayBase.dispose(worldObj, xCoord, yCoord, zCoord)
+		invalidate()
 		player.addChatMessage(
 			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitDim.provider.getDimensionName} was severed")
 			.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
@@ -113,11 +113,13 @@ class TileGateway extends TileEntity
 		teleportQueue.foreach(teleport(_))
 		teleportQueue = Nil
 	}
-	
+	// A more unified way to notify multiblock that it's dead
 	override def invalidate
 	{
-		dispose
+		if (isInvalid())
+			return
 		super.invalidate
+		dispose
 	}
 	
 	// NBT
@@ -152,10 +154,11 @@ class TileGateway extends TileEntity
 		if (worldObj.isRemote)
 			return
 			
-		//disposeMultiblock(worldObj, xCoord, yCoord, zCoord)
+		// Remove multiblock here
+		GatewayMod.BlockGatewayBase.cores(blockMetadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
-		GatewayMod.BlockGatewayBase.dispose(exitDim, exitX, exitY, exitZ)
-			
+		exitDim.getTileEntity(exitX, exitY, exitZ).invalidate()
+		// Cleanup
 		owner = null
 		exitX = 0
 		exitY = 0

@@ -54,12 +54,6 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 		world.getTileEntity(x, y, z).asInstanceOf[TileGateway]
 	}
 	
-	def dispose(world: World, x: Int, y: Int, z: Int)
-	{
-		if (world.getBlock(x, y, z) == this)
-			world.setBlock(x, y, z, Blocks.stone)
-	}
-	
 	override def hasTileEntity(meta: Int) =
 		subBlock(meta).hasTileEntity(meta)
 
@@ -88,7 +82,7 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 trait Endpoint
 {
 	val PortalPillarHeight = 3
-	
+	// This one is used only when endpoint is constructed by player, i.e. it checks presense of valid multiblock
 	def canAssembleHere(world: World, x: Int, y: Int, z: Int): Boolean
 	def assemble(world: World, x: Int, y: Int, z: Int): Unit
 	def disassemble(world: World, x: Int, y: Int, z: Int): Unit
