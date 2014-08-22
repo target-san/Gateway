@@ -43,23 +43,17 @@ class TileGateway extends TileEntity
 	// This list is processed the same tick it's initialized, so it shouldn't be stored in NBT
 	private var teleportQueue: List[Entity] = Nil
 	
-	def init(endpoint: TileGateway, owner: EntityPlayer): Unit =
-		init(endpoint.worldObj, endpoint.xCoord, endpoint.yCoord, endpoint.zCoord, owner)
-	
-	def init(exitDim: Int, ex: Int, ey: Int, ez: Int, owner: EntityPlayer): Unit =
-		init(Utils.world(exitDim), ex, ey, ez, owner)
-		
-	def init(exitWorld: World, ex: Int, ey: Int, ez: Int, player: EntityPlayer): Unit =
+	def init(endpoint: TileGateway, player: EntityPlayer): Unit =
 	{
 		if (owner != EmptyOwner) // owner and other params are set only once
 			throw new IllegalStateException("Gateway parameters are set only once")
-		exitX = ex
-		exitY = ey
-		exitZ = ez
+		exitX = endpoint.xCoord
+		exitY = endpoint.yCoord
+		exitZ = endpoint.zCoord
 		owner = player.getGameProfile().getId()
 		ownerName = player.getGameProfile().getName()
-		exitDim = exitWorld
-		//constructMultiblock(worldObj, xCoord, yCoord, zCoord)
+		exitDim = endpoint.worldObj
+		// NB: assemble isn't used here. Because multiblock should be already constructed by the time TE is initialized
 		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
 	}
     
@@ -170,7 +164,7 @@ class TileGateway extends TileEntity
 		if (entity.ridingEntity != null) getBottomMount(entity.ridingEntity)
 		else entity
 	
-	private def checkGatewayValid
+	private def checkGatewayValid // FIXME: do something with this, I suppose?...
 	{
 		if (owner == null || owner == EmptyOwner)
 			throw new IllegalStateException("Gateway not initialized properly: owner isn't set")

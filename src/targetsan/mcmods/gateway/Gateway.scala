@@ -27,16 +27,14 @@ object Gateway
 			event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK
 		)
 			return
-		// Try place gateway here
-		tryPlaceGateway(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
+			
+		for { (_, core) <- GatewayMod.BlockGatewayBase.cores }
+			if (core.multiblock.canAssembleHere(event.entityPlayer.worldObj, event.x, event.y, event.z))
+				tryPlaceGateway(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
     }
 
 	private def tryPlaceGateway(w: World, x: Int, y: Int, z: Int, player: EntityPlayer)
 	{
-		// Check if there's multiblock present
-		if (!isMultiblockPresent(w, x, y, z))
-			return
-		
 		val to = Gateway.dimension
 		getNetherExit(w, x, y, z) match
 		{
@@ -60,26 +58,12 @@ object Gateway
 	
 	private def placeGatewayPair(owner: EntityPlayer, from: World, x0: Int, y0: Int, z0: Int, to: World, x1: Int, y1: Int, z1: Int) =
 	{
-		val core1 = GatewayMod.BlockGatewayBase.placeCore(from, x0, y0, z0)
-		val core2 = GatewayMod.BlockGatewayBase.placeCore(to,   x1, y1, z1)
+		//val core1 = GatewayMod.BlockGatewayBase.placeCore(from, x0, y0, z0)
+		//val core2 = GatewayMod.BlockGatewayBase.placeCore(to,   x1, y1, z1)
 		
-		core1.init(core2, owner)
-		core2.init(core1, owner)
+		//core1.init(core2, owner)
+		//core2.init(core1, owner)
 	}
-	
-	private def isMultiblockPresent(w: World, x: Int, y: Int, z: Int) =
-		// center
-		w.getBlock(x, y, z) == Blocks.redstone_block &&
-		// corners
-		w.getBlock(x - 1, y, z - 1) == Blocks.obsidian &&
-		w.getBlock(x + 1, y, z - 1) == Blocks.obsidian &&
-		w.getBlock(x - 1, y, z + 1) == Blocks.obsidian &&
-		w.getBlock(x + 1, y, z + 1) == Blocks.obsidian &&
-		// sides
-		w.getBlock(x - 1, y, z) == Blocks.glass &&
-		w.getBlock(x + 1, y, z) == Blocks.glass &&
-		w.getBlock(x, y, z - 1) == Blocks.glass &&
-		w.getBlock(x, y, z + 1) == Blocks.glass
 	
 	private def getNetherExit(from: World, x: Int, y: Int, z: Int): Try[(Int, Int, Int)] =
 	{

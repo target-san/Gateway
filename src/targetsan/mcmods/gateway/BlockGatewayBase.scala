@@ -48,12 +48,6 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	def cores      = subsOfType[SubBlockCore]
 	def satellites = subsOfType[SubBlockSatellite]
 	
-	def placeCore(world: World, x: Int, y: Int, z: Int): TileGateway =
-	{
-		world.setBlock(x, y, z, this, Core, 3)
-		world.getTileEntity(x, y, z).asInstanceOf[TileGateway]
-	}
-	
 	override def hasTileEntity(meta: Int) =
 		subBlock(meta).hasTileEntity(meta)
 
@@ -78,8 +72,14 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	override def registerBlockIcons(register: IIconRegister) =
 		allSubBlocks foreach { _._2.registerBlockIcons(register) }
 }
-
-trait Endpoint
+/**
+ * Some notes.
+ * 1. These three methods are united here _only_ because they control multiblock.
+ * 2. canAssembleHere and assemble are used to construct multiblock,
+ *    _but_ disassemble is used by multiblock's control entity to remove it.
+ *    So creation and disposal are separated. 
+ */
+trait Endpoint // FIXME: more proper name
 {
 	val PortalPillarHeight = 3
 	// This one is used only when endpoint is constructed by player, i.e. it checks presense of valid multiblock
@@ -147,22 +147,20 @@ class SimpleEndpoint extends Endpoint
 	override def disassemble(world: World, x: Int, y: Int, z: Int) =
 	{
 		// dispose everything above platform
-		Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
-			.foreach
-			{ case (x, y, z) =>
-				if (world.getBlock(x, y, z) == GatewayMod.BlockGatewayAir)
-					world.setBlockToAir(x, y, z)
-			}
-
-		// dispose platform except core; disposing core here would cause infinite loop
-		for ((_, sat) <- GatewayMod.BlockGatewayBase.satellites)
-		{
-			val deadBlock =
-				if (world.provider.dimensionId == Gateway.DIMENSION_ID) Blocks.stone    // stone for Nether
-				else if (sat.isDiagonal)                                Blocks.obsidian // Obsidian for platform corners
-				else                                                    Blocks.glass    // Glass for platform sides
-			world.setBlock(x + sat.xOffset, y, z + sat.zOffset, deadBlock)
+		for {
+			(x, y, z) <- Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
 		}
+			if (world.getBlock(x, y, z) == GatewayMod.BlockGatewayAir)
+				world.setBlockToAir(x, y, z)
+		// dispose core
+		world.setBlock(x, y, z, Blocks.netherrack)
+		// dispose platform
+		for ((_, sat) <- GatewayMod.BlockGatewayBase.satellites)
+			world
+				.setBlock(
+					x + sat.xOffset, y, z + sat.zOffset,
+					if (sat.isDiagonal) Blocks.obsidian else Blocks.gravel
+				)
 	}
 }
 
