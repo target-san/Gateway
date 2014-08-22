@@ -23,68 +23,18 @@ object Gateway
 		if (event.entityPlayer.getHeldItem != null)
 		if (event.entityPlayer.getHeldItem.getItem == net.minecraft.init.Items.flint_and_steel)
 		if (event.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK)
-			for { (_, core) <- GatewayMod.BlockGatewayBase.cores }
-				if (core.multiblock.canAssembleHere(event.entityPlayer.worldObj, event.x, event.y, event.z))
-					tryPlaceGateway(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
-
-	private def tryPlaceGateway(w: World, x: Int, y: Int, z: Int, player: EntityPlayer)
-	{
-		val to = Gateway.dimension
-		getNetherExit(w, x, y, z) match
-		{
-			case Success((ex, ey, ez)) =>
-				placeGatewayPair(player, w, x, y, z, Gateway.dimension, ex, ey, ez)
-				player
-					.addChatMessage(
-						new ChatComponentText(
-							s"Gateway successfully constructed from ${w.provider.getDimensionName} to ${Gateway.dimension.provider.getDimensionName}"
-						)
-						.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GREEN))
-					)
-			case Failure(error) =>
-				player
-					.addChatMessage(
+			GatewayMod
+			.BlockGatewayBase
+			.cores
+			.foldLeft[Try[Boolean]](Success(false))
+			{	case (Success(false), (_, core)) =>
+					core.multiblock.assemble(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
+				case x@_ => x._1
+			} match {
+				case Failure(error) =>
+					event.entityPlayer.addChatMessage(
 						new ChatComponentText(error.getMessage)
 						.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED))
 					)
-		}
-	}
-	
-	private def placeGatewayPair(owner: EntityPlayer, from: World, x0: Int, y0: Int, z0: Int, to: World, x1: Int, y1: Int, z1: Int) =
-	{
-		//val core1 = GatewayMod.BlockGatewayBase.placeCore(from, x0, y0, z0)
-		//val core2 = GatewayMod.BlockGatewayBase.placeCore(to,   x1, y1, z1)
-		
-		//core1.init(core2, owner)
-		//core2.init(core1, owner)
-	}
-	
-	private def getNetherExit(from: World, x: Int, y: Int, z: Int): Try[(Int, Int, Int)] =
-	{
-		val to = Gateway.dimension
-		// Forbid constructing gateways from nether
-		if (from.provider.dimensionId == Gateway.DIMENSION_ID)
-			return Failure(new Exception("Gateways cannot be constructed from Nether"))
-		// Compute destination coordinates; TODO: implement volume lookup for optimal location 
-		def mapCoord(c: Int) = Math.round(c * from.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt
-		
-		val ex = mapCoord(x)
-		val ey = (to.provider.getActualHeight - 1) / 2
-		val ez = mapCoord(z)
-		// Check if destination point is free
-		if (!isDestinationFree(to, ex, ey, ez))
-			return Failure(new Exception("Gateway cannot be constructed here - there's another gateway too near on the other side"))
-
-		Success((ex, ey, ez))
-	}
-    // Checks if there are no active gateways in the nether too near
-	private def isDestinationFree(to: World, x: Int, y: Int, z: Int): Boolean =
-	{
-		val Radius = 7
-		Utils.enumVolume(to,
-				x - Radius, 0, z - Radius,
-				x + Radius, to.provider.getActualHeight - 1, z + Radius
-			)
-			.forall { case (x, y, z) => to.getBlock(x, y, z) != GatewayMod.BlockGatewayBase }
-	}
+			}
 }
