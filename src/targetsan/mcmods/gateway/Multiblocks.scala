@@ -37,7 +37,7 @@ class RedstoneCoreMultiblock extends Multiblock
 	override def assemble(world: World, x: Int, y: Int, z: Int) =
 	{
 		// Core
-		world.setBlock(x, y, z, GatewayMod.BlockGatewayBase , GatewayMod.BlockGatewayBase.Core, 3)
+		world.setBlock(x, y, z, GatewayMod.BlockGatewayBase , GatewayMod.BlockGatewayBase.RedstoneCore, 3)
 		// Satellite platform blocks
 		for ((i, sat) <- GatewayMod.BlockGatewayBase.satellites)
 			world.setBlock(x + sat.xOffset, y, z + sat.zOffset, GatewayMod.BlockGatewayBase, i, 3)
@@ -50,7 +50,7 @@ class RedstoneCoreMultiblock extends Multiblock
 	{
 		// dispose everything above platform
 		for {
-			(x, y, z) <- Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
+			(x, y, z) <- Utils.enumVolume(world, x, y + 1, z, x, y + PortalPillarHeight, z)
 		}
 			if (world.getBlock(x, y, z) == GatewayMod.BlockGatewayAir)
 				world.setBlockToAir(x, y, z)
@@ -63,5 +63,46 @@ class RedstoneCoreMultiblock extends Multiblock
 					x + sat.xOffset, y, z + sat.zOffset,
 					if (sat.isDiagonal) Blocks.obsidian else Blocks.gravel
 				)
+	}
+}
+
+class NetherMultiblock extends Multiblock
+{
+	// prevents from using this as standalone multiblock
+	override def canAssembleHere(w: World, x: Int, y: Int, z: Int) = false
+
+	override def assemble(world: World, x: Int, y: Int, z: Int) =
+	{
+		// Core
+		world.setBlock(x, y, z, GatewayMod.BlockGatewayBase , GatewayMod.BlockGatewayBase.MirrorCore, 3)
+		// Satellite platform blocks
+		for ((i, sat) <- GatewayMod.BlockGatewayBase.satellites)
+			world.setBlock(x + sat.xOffset, y, z + sat.zOffset, GatewayMod.BlockGatewayBase, i, 3)
+		// Portal column
+		for (y1 <- y+1 to y+PortalPillarHeight )
+			GatewayMod.BlockGatewayAir.placePortal(world, x, y1, z)
+		// additional platform
+		for ((x, y, z) <- Utils.enumVolume(world, x - 2, y, z - 2, x + 2, y, z + 2))
+			if (world.isAirBlock(x, y, z))
+				world.setBlock(x, y, z, Blocks.stone)
+		// shielding
+		for ((x, y, z) <- Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight , z + 1))
+			if (world.getBlock(x, y, z) != GatewayMod.BlockGatewayAir)
+				world.setBlock(x, y, z, GatewayMod.BlockGatewayAir, GatewayMod.BlockGatewayAir.Shield, 3)
+	}
+
+	override def disassemble(world: World, x: Int, y: Int, z: Int) =
+	{
+		// dispose everything above platform
+		for {
+			(x, y, z) <- Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
+		}
+			if (world.getBlock(x, y, z) == GatewayMod.BlockGatewayAir)
+				world.setBlockToAir(x, y, z)
+		// dispose platform
+		for ((x, y, z) <- Utils.enumVolume(world, x - 1, y, z - 1, x + 1, y, z + 1))
+			world.setBlock(x, y, z, Blocks.netherrack)
+		// dispose core
+		world.setBlock(x, y, z, Blocks.obsidian)
 	}
 }

@@ -17,21 +17,15 @@ object Gateway
 	
     @SubscribeEvent
     def onFlintAndSteelPreUse(event: PlayerInteractEvent): Unit =
-    {
-		if (event.entityPlayer.worldObj.isRemote) // Works only server-side
-			return
+		if (!event.entityPlayer.worldObj.isRemote) // Works only server-side
 		// We're interested in Flint'n'Steel clicking some block only
-		if (event.entityPlayer == null ||
-			event.entityPlayer.getHeldItem == null ||
-			event.entityPlayer.getHeldItem.getItem != net.minecraft.init.Items.flint_and_steel ||
-			event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK
-		)
-			return
-			
-		for { (_, core) <- GatewayMod.BlockGatewayBase.cores }
-			if (core.multiblock.canAssembleHere(event.entityPlayer.worldObj, event.x, event.y, event.z))
-				tryPlaceGateway(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
-    }
+		if (event.entityPlayer != null)
+		if (event.entityPlayer.getHeldItem != null)
+		if (event.entityPlayer.getHeldItem.getItem == net.minecraft.init.Items.flint_and_steel)
+		if (event.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK)
+			for { (_, core) <- GatewayMod.BlockGatewayBase.cores }
+				if (core.multiblock.canAssembleHere(event.entityPlayer.worldObj, event.x, event.y, event.z))
+					tryPlaceGateway(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
 
 	private def tryPlaceGateway(w: World, x: Int, y: Int, z: Int, player: EntityPlayer)
 	{

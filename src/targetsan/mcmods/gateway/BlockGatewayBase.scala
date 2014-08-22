@@ -20,7 +20,7 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	setBlockName("GatewayBase")
 	setStepSound(Block.soundTypePiston)
 	
-	val Core  = 0 // Default core block
+	val RedstoneCore  = 0 // Default core block
 	val SatNW = 1
 	val SatN  = 2
 	val SatNE = 3
@@ -29,9 +29,10 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	val SatS  = 6
 	val SatSW = 7
 	val SatW  = 8
+	val MirrorCore = 9
 	
 	registerSubBlocks(
-		Core -> new SubBlockCore(new RedstoneCoreMultiblock)
+		RedstoneCore -> new SubBlockCore(new RedstoneCoreMultiblock)
 		, SatNW -> new SubBlockSatellite( -1, -1, "minecraft:obsidian")
 		, SatN  -> new SubBlockSatellite(  0, -1, "minecraft:obsidian", 0)
 		, SatNE -> new SubBlockSatellite(  1, -1, "minecraft:obsidian")
@@ -40,6 +41,7 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 		, SatS  -> new SubBlockSatellite(  0,  1, "minecraft:obsidian", 2)
 		, SatSW -> new SubBlockSatellite( -1,  1, "minecraft:obsidian")
 		, SatW  -> new SubBlockSatellite( -1,  0, "minecraft:obsidian", 3)
+		, MirrorCore -> new SubBlockCore(new NetherMultiblock)
 	)
 	
 	private def subsOfType[T <: SubBlock](implicit m: Manifest[T]) =
