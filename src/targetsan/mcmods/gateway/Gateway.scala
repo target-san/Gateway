@@ -29,12 +29,13 @@ object Gateway
 			.foldLeft[Try[Boolean]](Success(false))
 			{	case (Success(false), (_, core)) =>
 					core.multiblock.assemble(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
-				case x@_ => x._1
+				case (x, _) => x
 			} match {
 				case Failure(error) =>
 					event.entityPlayer.addChatMessage(
 						new ChatComponentText(error.getMessage)
 						.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED))
 					)
+				case _ => ()
 			}
 }
