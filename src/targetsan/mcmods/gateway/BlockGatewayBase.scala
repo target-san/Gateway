@@ -31,7 +31,7 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	val SatW  = 8
 	
 	registerSubBlocks(
-		Core -> new SubBlockCore(new SimpleEndpoint)
+		Core -> new SubBlockCore(new RedstoneCoreMultiblock)
 		, SatNW -> new SubBlockSatellite( -1, -1, "minecraft:obsidian")
 		, SatN  -> new SubBlockSatellite(  0, -1, "minecraft:obsidian", 0)
 		, SatNE -> new SubBlockSatellite(  1, -1, "minecraft:obsidian")
@@ -72,23 +72,8 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	override def registerBlockIcons(register: IIconRegister) =
 		allSubBlocks foreach { _._2.registerBlockIcons(register) }
 }
-/**
- * Some notes.
- * 1. These three methods are united here _only_ because they control multiblock.
- * 2. canAssembleHere and assemble are used to construct multiblock,
- *    _but_ disassemble is used by multiblock's control entity to remove it.
- *    So creation and disposal are separated. 
- */
-trait Endpoint // FIXME: more proper name
-{
-	val PortalPillarHeight = 3
-	// This one is used only when endpoint is constructed by player, i.e. it checks presense of valid multiblock
-	def canAssembleHere(world: World, x: Int, y: Int, z: Int): Boolean
-	def assemble(world: World, x: Int, y: Int, z: Int): Unit
-	def disassemble(world: World, x: Int, y: Int, z: Int): Unit
-}
 
-class SubBlockCore(val multiblock: Endpoint) extends SubBlock
+class SubBlockCore(val multiblock: Multiblock) extends SubBlock
 {
 	protected var blockTopIcon: IIcon = null
 	
@@ -114,53 +99,6 @@ class SubBlockCore(val multiblock: Endpoint) extends SubBlock
 	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity)
 	{
 		world.getTileEntity(x, y, z).asInstanceOf[TileGateway].teleportEntity(entity)
-	}
-}
-
-class SimpleEndpoint extends Endpoint
-{
-	override def canAssembleHere(w: World, x: Int, y: Int, z: Int) =
-		w.getBlock(x, y, z) == Blocks.redstone_block &&
-		// corners
-		w.getBlock(x - 1, y, z - 1) == Blocks.obsidian &&
-		w.getBlock(x + 1, y, z - 1) == Blocks.obsidian &&
-		w.getBlock(x - 1, y, z + 1) == Blocks.obsidian &&
-		w.getBlock(x + 1, y, z + 1) == Blocks.obsidian &&
-		// sides
-		w.getBlock(x - 1, y, z) == Blocks.glass &&
-		w.getBlock(x + 1, y, z) == Blocks.glass &&
-		w.getBlock(x, y, z - 1) == Blocks.glass &&
-		w.getBlock(x, y, z + 1) == Blocks.glass
-
-	override def assemble(world: World, x: Int, y: Int, z: Int) =
-	{
-		// Core
-		world.setBlock(x, y, z, GatewayMod.BlockGatewayBase , GatewayMod.BlockGatewayBase.Core, 3)
-		// Satellite platform blocks
-		for ((i, sat) <- GatewayMod.BlockGatewayBase.satellites)
-			world.setBlock(x + sat.xOffset, y, z + sat.zOffset, GatewayMod.BlockGatewayBase, i, 3)
-		// Portal column
-		for (y1 <- y+1 to y+PortalPillarHeight )
-			GatewayMod.BlockGatewayAir.placePortal(world, x, y1, z)
-	}
-
-	override def disassemble(world: World, x: Int, y: Int, z: Int) =
-	{
-		// dispose everything above platform
-		for {
-			(x, y, z) <- Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
-		}
-			if (world.getBlock(x, y, z) == GatewayMod.BlockGatewayAir)
-				world.setBlockToAir(x, y, z)
-		// dispose core
-		world.setBlock(x, y, z, Blocks.netherrack)
-		// dispose platform
-		for ((_, sat) <- GatewayMod.BlockGatewayBase.satellites)
-			world
-				.setBlock(
-					x + sat.xOffset, y, z + sat.zOffset,
-					if (sat.isDiagonal) Blocks.obsidian else Blocks.gravel
-				)
 	}
 }
 
