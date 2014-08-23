@@ -31,12 +31,10 @@ class TileGateway extends TileEntity
 	private var ownerName = ""
 	private var flags = 0
 	
-	private var _disposalMeta = -1 // Copies blockMetadata - because the latter is erased somewhere in process
-	private def disposalMeta = _disposalMeta
-	private def disposalMeta_= (i: Int) = { _disposalMeta = i }
-	
+	/** A set of methods which works with sides markup 
+	 *  Implements conventional way to remove gateways, which are effectively indestructible
+	 */
 	private val DisposeMarksMask = 0x0F
-	private val PortalHeight = 3
 
 	private def sideToFlag(side: Int): Int = 
 	{
@@ -44,13 +42,57 @@ class TileGateway extends TileEntity
 			throw new IllegalArgumentException(s"Disposal marks: side index $side is not in range [0..3]")
 		1 << side
 	}
+	
+	private def markSideDisposed(side: Int, mark: Boolean) =
+		if (mark) flags |= sideToFlag(side)
+		else flags &= ~sideToFlag(side)
+		
+	private def areAllSidesMarked = (flags & DisposeMarksMask) == DisposeMarksMask
+	
+	/** Accessor funcs which get/set stored block metadata.
+	 *  This is due to block's meta might be cleaned when TE is invalidated by block removal. I'm not sure.
+	 *  Might be dropped in future
+	 */
+	private val MetaMask = 0x0F
+	private val MetaOffset = 4
+	
+	private def metadata               = (flags >> MetaOffset) & MetaMask
+	private def metadata_=(value: Int) =
+	{
+		val newValue = (value & MetaMask) << MetaOffset
+		val mask = MetaMask << MetaOffset
+		flags = (flags & ~mask) | newValue
+	}
+	/** Flag accessors for controlling multiblock's state. Would possibly prevent some strange things. I'm not sure.
+	 */
+	private object State extends Enumeration
+	{
+		type State = Value
+		val PreInit, Alive, Disposing = Value
+	}
+	import State._
+	
+	private val StateMask = 0x03
+	private val StateOffset = 8
+
+	private def state: State          = State((flags >> StateOffset) & StateMask)
+	private def state_=(value: State) =
+	{
+		val newValue = (value.id & StateMask) << StateOffset
+		val mask = StateMask << StateOffset
+		flags = (flags & ~mask) | newValue
+	}
 	// This list is processed the same tick it's initialized, so it shouldn't be stored in NBT
 	private var teleportQueue: List[Entity] = Nil
 	
 	def init(endpoint: TileGateway, player: EntityPlayer): Unit =
 	{
-		if (owner != EmptyOwner) // owner and other params are set only once
+		if (worldObj.isRemote)
+			return
+		if (state != PreInit) // owner and other params are set only once
 			throw new IllegalStateException("Gateway parameters are set only once")
+
+		state = Alive
 		exitX = endpoint.xCoord
 		exitY = endpoint.yCoord
 		exitZ = endpoint.zCoord
@@ -59,7 +101,7 @@ class TileGateway extends TileEntity
 		exitDim = endpoint.worldObj
 		// NB: assemble isn't used here. Because multiblock should be already constructed by the time TE is initialized
 		markDirty();
-		disposalMeta = getBlockMetadata()
+		metadata = getBlockMetadata()
 	}
     
 	def teleportEntity(entity: Entity)
@@ -85,8 +127,8 @@ class TileGateway extends TileEntity
 			)
 			return
 		}
-		flags |= sideToFlag(side)
-		if ((flags & DisposeMarksMask) != DisposeMarksMask)
+		markSideDisposed(side, true)
+		if (!areAllSidesMarked)
 			return
 
 		invalidate()
@@ -100,7 +142,7 @@ class TileGateway extends TileEntity
 	{
 		if (worldObj.isRemote)
 			return
-		flags &= ~sideToFlag(side)
+		markSideDisposed(side, false)
 	}
 	
 	// Update func
@@ -115,8 +157,6 @@ class TileGateway extends TileEntity
 	// A more unified way to notify multiblock that it's dead
 	override def invalidate
 	{
-		if (isInvalid())
-			return
 		super.invalidate
 		dispose
 	}
@@ -135,7 +175,6 @@ class TileGateway extends TileEntity
 		owner = java.util.UUID.fromString(tag.getString("owner"))
 		ownerName = tag.getString("ownerName")
 		flags = tag.getInteger("flags")
-		disposalMeta = tag.getInteger("disposalMeta")
 	}
 	
 	override def writeToNBT(tag: NBTTagCompound)
@@ -147,25 +186,20 @@ class TileGateway extends TileEntity
 		tag.setString("owner", owner.toString)
 		tag.setString("ownerName", ownerName)
 		tag.setInteger("flags", flags)
-		tag.setInteger("disposalMeta", disposalMeta)
 	}
 	
 	private def dispose()
 	{
-		if (worldObj.isRemote)
+		if (worldObj.isRemote || state != Alive)
 			return
-			
+		
+		state = Disposing
 		// Remove multiblock here
-		GatewayMod.BlockGatewayBase.cores(disposalMeta).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
+		GatewayMod.BlockGatewayBase.cores(metadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
-		exitDim.getTileEntity(exitX, exitY, exitZ).invalidate()
-		// Cleanup
-		owner = null
-		exitX = 0
-		exitY = 0
-		exitZ = 0
-		exitDim = null
-		disposalMeta = -1
+		val exitTE = exitDim.getTileEntity(exitX, exitY, exitZ)
+		if (exitTE != null && exitTE.isInstanceOf[TileGateway])
+			exitTE.invalidate()
 	}
 	
 	private def getBottomMount(entity: Entity): Entity = 
