@@ -32,7 +32,7 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 	val MirrorCore = 9
 	
 	registerSubBlocks(
-		RedstoneCore -> new SubBlockCore(new RedstoneCoreMultiblock)
+		RedstoneCore -> new SubBlockCore(RedstoneCoreMultiblock)
 		, SatNW -> new SubBlockSatellite( -1, -1, "minecraft:obsidian")
 		, SatN  -> new SubBlockSatellite(  0, -1, "minecraft:obsidian", 0)
 		, SatNE -> new SubBlockSatellite(  1, -1, "minecraft:obsidian")
@@ -41,7 +41,7 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 		, SatS  -> new SubBlockSatellite(  0,  1, "minecraft:obsidian", 2)
 		, SatSW -> new SubBlockSatellite( -1,  1, "minecraft:obsidian")
 		, SatW  -> new SubBlockSatellite( -1,  0, "minecraft:obsidian", 3)
-		, MirrorCore -> new SubBlockCore(new NetherMultiblock)
+		, MirrorCore -> new SubBlockCore(NetherMultiblock)
 	)
 	
 	private def subsOfType[T <: SubBlock](implicit m: Manifest[T]) =
@@ -73,6 +73,9 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 
 	override def registerBlockIcons(register: IIconRegister) =
 		allSubBlocks foreach { _._2.registerBlockIcons(register) }
+
+	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int) = 
+		subBlock(meta).onBlockPreDestroy(world, x, y, z, meta)
 }
 
 class SubBlockCore(val multiblock: Multiblock) extends SubBlock
@@ -98,10 +101,8 @@ class SubBlockCore(val multiblock: Multiblock) extends SubBlock
 		if (side == 1) blockTopIcon
 		else           blockIcon
 	
-	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity)
-	{
+	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) =
 		world.getTileEntity(x, y, z).asInstanceOf[TileGateway].teleportEntity(entity)
-	}
 }
 
 class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String, private val side: Int = -1) extends SubBlock
@@ -141,5 +142,13 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String,
 			.asInstanceOf[TileGateway]
 		if (tile != null)
 			tile.unmarkForDispose(this.side)
+	}
+	
+	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int)
+	{
+		val tile = world
+			.getTileEntity(x - xOffset, y, z - zOffset)
+		if (tile != null)
+			tile.invalidate()
 	}
 }

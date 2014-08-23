@@ -39,7 +39,7 @@ trait MultiblockImpl extends Multiblock
 	}
 }
 /// The simplest version - 3x3, obsidian on corners, glass on sides, redstone block in center
-class RedstoneCoreMultiblock extends MultiblockImpl
+object RedstoneCoreMultiblock extends MultiblockImpl
 {
 	override def assemble(world: World, x: Int, y: Int, z: Int, owner: EntityPlayer): Try[Boolean] =
 	{
@@ -60,7 +60,7 @@ class RedstoneCoreMultiblock extends MultiblockImpl
 		if (!isDestinationFree(to, ex, ey, ez))
 			return Failure(new Exception(s"Another gateway's exit in the ${to.provider.getDimensionName()} prevents this gateway from opening"))
 
-		mutualInit(world, x, y, z, companion, to, ex, ey, ez, owner)
+		mutualInit(world, x, y, z, NetherMultiblock, to, ex, ey, ez, owner)
 		Success(true)
 	}
 
@@ -82,8 +82,6 @@ class RedstoneCoreMultiblock extends MultiblockImpl
 					if (sat.isDiagonal) Blocks.obsidian else Blocks.gravel
 				)
 	}
-	
-	private val companion = new NetherMultiblock
 	
 	override def rawAssemble(world: World, x: Int, y: Int, z: Int)
 	{
@@ -122,7 +120,7 @@ class RedstoneCoreMultiblock extends MultiblockImpl
 	}
 }
 
-class NetherMultiblock extends MultiblockImpl
+object NetherMultiblock extends MultiblockImpl
 {
 	// prevents from using this as standalone multiblock
 	override def assemble(world: World, x: Int, y: Int, z: Int, owner: EntityPlayer): Try[Boolean] = Success(false)

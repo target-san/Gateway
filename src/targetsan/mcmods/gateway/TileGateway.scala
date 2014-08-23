@@ -31,6 +31,10 @@ class TileGateway extends TileEntity
 	private var ownerName = ""
 	private var flags = 0
 	
+	private var _disposalMeta = -1 // Copies blockMetadata - because the latter is erased somewhere in process
+	private def disposalMeta = _disposalMeta
+	private def disposalMeta_= (i: Int) = { _disposalMeta = i }
+	
 	private val DisposeMarksMask = 0x0F
 	private val PortalHeight = 3
 
@@ -54,7 +58,8 @@ class TileGateway extends TileEntity
 		ownerName = player.getGameProfile().getName()
 		exitDim = endpoint.worldObj
 		// NB: assemble isn't used here. Because multiblock should be already constructed by the time TE is initialized
-		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this)
+		markDirty();
+		disposalMeta = getBlockMetadata()
 	}
     
 	def teleportEntity(entity: Entity)
@@ -130,6 +135,7 @@ class TileGateway extends TileEntity
 		owner = java.util.UUID.fromString(tag.getString("owner"))
 		ownerName = tag.getString("ownerName")
 		flags = tag.getInteger("flags")
+		disposalMeta = tag.getInteger("disposalMeta")
 	}
 	
 	override def writeToNBT(tag: NBTTagCompound)
@@ -141,6 +147,7 @@ class TileGateway extends TileEntity
 		tag.setString("owner", owner.toString)
 		tag.setString("ownerName", ownerName)
 		tag.setInteger("flags", flags)
+		tag.setInteger("disposalMeta", disposalMeta)
 	}
 	
 	private def dispose()
@@ -149,7 +156,7 @@ class TileGateway extends TileEntity
 			return
 			
 		// Remove multiblock here
-		GatewayMod.BlockGatewayBase.cores(blockMetadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
+		GatewayMod.BlockGatewayBase.cores(disposalMeta).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
 		exitDim.getTileEntity(exitX, exitY, exitZ).invalidate()
 		// Cleanup
@@ -158,6 +165,7 @@ class TileGateway extends TileEntity
 		exitY = 0
 		exitZ = 0
 		exitDim = null
+		disposalMeta = -1
 	}
 	
 	private def getBottomMount(entity: Entity): Entity = 

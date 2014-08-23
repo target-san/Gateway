@@ -13,6 +13,6 @@
 </listAttribute>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="GradleStart"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="Gateway"/>
-<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dfml.ignoreInvalidMinecraftCertificates=true -Djava.library.path=&quot;${project_loc}/build/natives&quot;"/>
-<stringAttribute key="org.eclipse.jdt.launching.WORKING_DIRECTORY" value="${project_loc}/run"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dfml.ignoreInvalidMinecraftCertificates=true -Djava.library.path=&quot;${project_loc:Gateway}/build/natives&quot;"/>
+<stringAttribute key="org.eclipse.jdt.launching.WORKING_DIRECTORY" value="${project_loc:Gateway}/run"/>
 </launchConfiguration>
