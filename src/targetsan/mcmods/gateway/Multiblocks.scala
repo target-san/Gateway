@@ -92,15 +92,17 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 			GatewayMod.BlockGatewayAir.placePortal(world, x, y1, z)
 	}
 	
+	private def translatePoint(from: World, x: Int, y: Int, z: Int, to: World): (Int, Int, Int) =
+	{
+		def mapCoord(c: Int) = Math.round(c * from.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt
+		(mapCoord(x), (to.provider.getActualHeight - 1) / 2, mapCoord(z))
+	}
+	
 	private def findExit(from: World, x: Int, y: Int, z: Int): Either[String, (Int, Int, Int)] =
 	{
 		val to = Gateway.dimension
-		// Compute destination coordinates; TODO: implement volume lookup for optimal location 
-		def mapCoord(c: Int) = Math.round(c * from.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt
-		
-		val ex = mapCoord(x)
-		val ey = (to.provider.getActualHeight - 1) / 2
-		val ez = mapCoord(z)
+		// Compute destination coordinates
+		val (ex, ey, ez) = translatePoint(from, x, y, z, to)
 		// Check if destination point is free
 		if (!isDestinationFree(to, ex, ey, ez))
 			Left(s"Another gateway's exit in the ${to.provider.getDimensionName()} prevents this gateway from opening")
@@ -130,6 +132,42 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 				x + Radius, to.provider.getActualHeight - 1, z + Radius
 			)
 			.forall { case (x, y, z) => to.getBlock(x, y, z) != GatewayMod.BlockGatewayBase }
+	}
+	// Proper scan algorithm
+	private def findExit2(from: World, x0: Int, y0: Int, z0: Int): Either[String, (Int, Int, Int)] =
+	{
+		val to = Gateway.dimension
+		val (cx, cy, cz) = translatePoint(from, x0, y0, z0, to)
+		
+		val DeadZoneRadius = 7
+		val LookupRadius = 3
+		val LookupHeight = to.provider.getActualHeight() / 4
+		val LookupX = cx - LookupRadius to cx + LookupRadius
+		val LookupY = cy - LookupHeight to cy + LookupHeight
+		val LookupZ = cz - LookupRadius to cz + LookupRadius
+		
+		var endpoints: List[(Int, Int, Int, Int)] = Nil
+		
+		for ((x, y, z) <- Utils.enumVolume(to, cx - DeadZoneRadius, 0, cz - DeadZoneRadius, cx + DeadZoneRadius, to.provider.getActualHeight - 1, cz + DeadZoneRadius))
+		{
+			// Short-circuit exit, detects presense of other gateways
+			if (to.getBlock(x, y, z) == GatewayMod.BlockGatewayBase)
+				return Left(s"Another gateway's exit in the ${to.provider.getDimensionName()} prevents this gateway from opening")
+			// Locate all valid endpoints
+			if ((LookupX contains x) && (LookupY contains y) && (LookupZ contains z))
+			{
+				val rate = rateEndpoint(to, x, y, z)
+				if (rate > 0)
+					endpoints :+= (x, y, z, rate)
+			}
+		}
+		
+		Right((cx, cy, cz))
+	}
+	
+	private def rateEndpoint(w: World, x: Int, y: Int, z: Int): Int =
+	{
+		0
 	}
 }
 
