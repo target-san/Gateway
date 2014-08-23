@@ -49,19 +49,14 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 			
 		if (world.provider.dimensionId == to.provider.dimensionId)
 			return Failure(new Exception(s"Redstone isn't powerful enough to open gateway from ${to.provider.getDimensionName()}. Try something different."))
-		
-		// Compute destination coordinates; TODO: implement volume lookup for optimal location 
-		def mapCoord(c: Int) = Math.round(c * world.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt
-		
-		val ex = mapCoord(x)
-		val ey = (to.provider.getActualHeight - 1) / 2
-		val ez = mapCoord(z)
-		// Check if destination point is free
-		if (!isDestinationFree(to, ex, ey, ez))
-			return Failure(new Exception(s"Another gateway's exit in the ${to.provider.getDimensionName()} prevents this gateway from opening"))
 
-		mutualInit(world, x, y, z, NetherMultiblock, to, ex, ey, ez, owner)
-		Success(true)
+		findExit(world, x, y, z) match
+		{
+			case Left(message) => Failure(new Exception(message))
+			case Right((ex, ey, ez)) =>
+				mutualInit(world, x, y, z, NetherMultiblock, to, ex, ey, ez, owner)
+				Success(true)
+		}
 	}
 
 	override def disassemble(world: World, x: Int, y: Int, z: Int) =
@@ -73,13 +68,15 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 			if (world.getBlock(x, y, z) == GatewayMod.BlockGatewayAir)
 				world.setBlockToAir(x, y, z)
 		// dispose core
-		world.setBlock(x, y, z, Blocks.netherrack)
+		//world.setBlock(x, y, z, Blocks.netherrack)
+		world.setBlock(x, y, z, Blocks.redstone_block)
 		// dispose platform
 		for ((_, sat) <- GatewayMod.BlockGatewayBase.satellites)
 			world
 				.setBlock(
 					x + sat.xOffset, y, z + sat.zOffset,
-					if (sat.isDiagonal) Blocks.obsidian else Blocks.gravel
+					//if (sat.isDiagonal) Blocks.obsidian else Blocks.gravel // disabled temporarily
+					if (sat.isDiagonal) Blocks.obsidian else Blocks.glass // temporary stub - returns original multiblock
 				)
 	}
 	
@@ -93,6 +90,22 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		// Portal column
 		for (y1 <- y+1 to y+PortalPillarHeight )
 			GatewayMod.BlockGatewayAir.placePortal(world, x, y1, z)
+	}
+	
+	private def findExit(from: World, x: Int, y: Int, z: Int): Either[String, (Int, Int, Int)] =
+	{
+		val to = Gateway.dimension
+		// Compute destination coordinates; TODO: implement volume lookup for optimal location 
+		def mapCoord(c: Int) = Math.round(c * from.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt
+		
+		val ex = mapCoord(x)
+		val ey = (to.provider.getActualHeight - 1) / 2
+		val ez = mapCoord(z)
+		// Check if destination point is free
+		if (!isDestinationFree(to, ex, ey, ez))
+			Left(s"Another gateway's exit in the ${to.provider.getDimensionName()} prevents this gateway from opening")
+		else
+			Right((ex, ey, ez))
 	}
 
 	private def isMultiblockPresent(w: World, x: Int, y: Int, z: Int) =
