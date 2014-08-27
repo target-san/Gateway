@@ -44,7 +44,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		if (world.provider.dimensionId == to.provider.dimensionId)
 			return Failure(new Exception(s"Redstone isn't powerful enough to open gateway from ${to.provider.getDimensionName()}. Try something different."))
 
-		findExit(world, x, y, z) match
+		findExit2(world, x, y, z) match
 		{
 			case Left(message) => Failure(new Exception(message))
 			case Right((ex, ey, ez)) =>
@@ -133,23 +133,25 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		val to = Gateway.dimension
 		val (cx, cy, cz) = translatePoint(from, x0, y0, z0, to)
 		
-		val DeadZoneRadius = 7
-		val LookupRadius = 3
-		val LookupHeight = to.provider.getActualHeight() / 4
+		val volume = scanVolume(to, cx, cy, cz)
+		val LookupH = to.provider.getActualHeight() / HeightFractions
 		
-		var endpoints: List[(Int, Int, Int, Int)] = Nil
+		def sqr(x: Int) = x * x
 		
-		val endpointVolume = mapVolume(to, cx - LookupRadius, cy - LookupHeight, cz - LookupRadius, cx + LookupRadius, cy + LookupHeight, cz + LookupRadius)
-		// First pass. This one scans for block types in placement area and marks unavailable columns due to presense of near gateways
+		def distFactor(x: Int, y: Int, z: Int): Double =
+			Math.log(sqr(x - cx) + sqr((y - cy) / 2) + sqr(z - cz) + 1)
+		
 		Utils
-		.enumVolume(cx - DeadZoneRadius, 0, cz - DeadZoneRadius, cx + DeadZoneRadius, to.provider.getActualHeight - 1, cz + DeadZoneRadius)
-		.foreach { case (x, y, z) =>
-			val entity = to.getTileEntity(x, y, z)
-			if (entity != null && entity.isInstanceOf[TileGateway]) // detect nearby cores
-				return Left("Another gateway is too near to the possible endpoint in the ")
+		.enumVolume(cx - LookupR, cy - LookupH, cz - LookupR, cx + LookupR, cy + LookupH, cz + LookupR)
+		.view
+		.map(pos => (pos._1, pos._2, pos._3, ratePosition(pos._1, pos._2, pos._3, volume) ) ) // calculate position-independent rates
+		.filter(_._4 != Int.MaxValue) // Get rid of invalid positions
+		.map({ case (x, y, z, r) => (x, y, z, r + distFactor(x, y, z)) }) // Add distance factor
+		.sortBy(_._4) // Sort by rate
+		.headOption match {
+			case Some((x, y, z, _)) => Right((x, y, z))
+			case _ => Left("Gateway cannot open - there are obstacles on the other side. Might be other gateway too near")
 		}
-		
-		Right((cx, cy, cz))
 	}
 	
 	private object BlockType extends Enumeration
@@ -169,7 +171,9 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	private val EffDeadR = DeadR - EndpointR
 	private val EffLookupR = LookupR + EndpointR
 	
-	private def scanVolume(w: World, cx: Int, cy: Int, cz: Int): (Int, Int, Int) => BlockType.BlockType =
+	private type VolumeFunc = (Int, Int, Int) => BlockType.BlockType
+	
+	private def scanVolume(w: World, cx: Int, cy: Int, cz: Int): VolumeFunc =
 	{
 		val LookupH = w.provider.getActualHeight() / HeightFractions
 
@@ -231,6 +235,35 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		}
 		// Return getter func as-is
 		getType
+	}
+	
+	private def ratePosition(x: Int, y: Int, z: Int, volume: VolumeFunc): Int =
+	{
+		import BlockType._
+		val upperRate = Utils
+			.enumVolume(x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
+			.foldLeft(0)
+			{ case (r, (x, y, z)) =>
+				if (r == Int.MaxValue) r
+				else volume(x, y, z) match {
+					case Invalid | Liquid => Int.MaxValue
+					case Air => r
+					case Solid => r + 2
+					case Complex => r + 1
+				}
+			}
+		
+		Utils
+		.enumVolume(x - 2, y, z - 2, x + 2, y, z + 2)
+		.foldLeft(upperRate)
+		{ case (r, (x, y, z)) =>
+			if (r == Int.MaxValue) r
+			else volume(x, y, z) match {
+				case Invalid => Int.MaxValue
+				case Solid => r
+				case _ => r + 1
+			}
+		}
 	}
 }
 
