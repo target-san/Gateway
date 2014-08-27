@@ -38,6 +38,6 @@ object Utils
 {
 	def world(dim: Int) = MinecraftServer.getServer().worldServerForDimension(dim)
 	
-	def enumVolume(world: World, x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =
+	def enumVolume(x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =
 		for (x <- x1 to x2; y <- y1 to y2; z <- z1 to z2) yield (x, y, z)
 }

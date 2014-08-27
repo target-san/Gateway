@@ -6,18 +6,12 @@ import scala.util.Try
 import scala.util.Success
 import net.minecraft.entity.player.EntityPlayer
 import scala.util.Failure
+import net.minecraft.block.BlockLiquid
 
-/**
- * Some notes.
- * 1. These three methods are united here _only_ because they control multiblock.
- * 2. canAssembleHere and assemble are used to construct multiblock,
- *    _but_ disassemble is used by multiblock's control entity to remove it.
- *    So creation and disposal are separated. 
- */
 trait Multiblock
 {
 	protected val PortalPillarHeight = 3
-	// This one only assembles multiblock
+	// Perform full multiblock assembly, including construction of both endpoints
 	def assemble(world: World, x: Int, y: Int, z: Int, owner: EntityPlayer): Try[Boolean]
 	def disassemble(world: World, x: Int, y: Int, z: Int): Unit
 }
@@ -63,7 +57,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	{
 		// dispose everything above platform
 		for {
-			(x, y, z) <- Utils.enumVolume(world, x, y + 1, z, x, y + PortalPillarHeight, z)
+			(x, y, z) <- Utils.enumVolume(x, y + 1, z, x, y + PortalPillarHeight, z)
 		}
 			if (world.getBlock(x, y, z) == GatewayMod.BlockGatewayAir)
 				world.setBlockToAir(x, y, z)
@@ -127,7 +121,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	private def isDestinationFree(to: World, x: Int, y: Int, z: Int): Boolean =
 	{
 		val Radius = 7
-		Utils.enumVolume(to,
+		Utils.enumVolume(
 				x - Radius, 0, z - Radius,
 				x + Radius, to.provider.getActualHeight - 1, z + Radius
 			)
@@ -142,32 +136,49 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		val DeadZoneRadius = 7
 		val LookupRadius = 3
 		val LookupHeight = to.provider.getActualHeight() / 4
-		val LookupX = cx - LookupRadius to cx + LookupRadius
-		val LookupY = cy - LookupHeight to cy + LookupHeight
-		val LookupZ = cz - LookupRadius to cz + LookupRadius
 		
 		var endpoints: List[(Int, Int, Int, Int)] = Nil
 		
-		for ((x, y, z) <- Utils.enumVolume(to, cx - DeadZoneRadius, 0, cz - DeadZoneRadius, cx + DeadZoneRadius, to.provider.getActualHeight - 1, cz + DeadZoneRadius))
-		{
-			// Short-circuit exit, detects presense of other gateways
-			if (to.getBlock(x, y, z) == GatewayMod.BlockGatewayBase)
-				return Left(s"Another gateway's exit in the ${to.provider.getDimensionName()} prevents this gateway from opening")
-			// Locate all valid endpoints
-			if ((LookupX contains x) && (LookupY contains y) && (LookupZ contains z))
-			{
-				val rate = rateEndpoint(to, x, y, z)
-				if (rate > 0)
-					endpoints :+= (x, y, z, rate)
-			}
+		val endpointVolume = mapVolume(to, cx - LookupRadius, cy - LookupHeight, cz - LookupRadius, cx + LookupRadius, cy + LookupHeight, cz + LookupRadius)
+		// First pass. This one scans for block types in placement area and marks unavailable columns due to presense of near gateways
+		Utils
+		.enumVolume(cx - DeadZoneRadius, 0, cz - DeadZoneRadius, cx + DeadZoneRadius, to.provider.getActualHeight - 1, cz + DeadZoneRadius)
+		.foreach { case (x, y, z) =>
+			val entity = to.getTileEntity(x, y, z)
+			if (entity != null && entity.isInstanceOf[TileGateway]) // detect nearby cores
+				return Left("Another gateway is too near to the possible endpoint in the ")
 		}
 		
 		Right((cx, cy, cz))
 	}
 	
-	private def rateEndpoint(w: World, x: Int, y: Int, z: Int): Int =
+	private object BlockType extends Enumeration
 	{
-		0
+		type BlockType = Value
+		val Invalid, Solid, Complex, Liquid, Air = Value
+	}
+	// Maps specified volume 
+	private def scanVolume(w: World, cx: Int, cy: Int, cz: Int, deadR: Int, lookupR: Int, lookupH: Int): ((Int, Int, Int) => BlockType.BlockType, (Int, Int, Int) => Boolean) =
+	{
+		val dx = x1 - x0
+		val dy = y1 - y0
+		val dz = z1 - z0
+		
+		val blocks = Utils
+			.enumVolume(x0, y0, z0, x1, y1, z1)
+			.map { case (x, y, z) =>
+				if (w.isAirBlock(x, y, z)) BlockType.Air
+				else if (w.isBlockNormalCubeDefault(x, y, z, false)) BlockType.Solid
+				else if (w.getBlock(x, y, z).isInstanceOf[BlockLiquid]) BlockType.Liquid
+				else BlockType.Complex
+			}
+		
+		return { (x, y, z) =>
+			if (x < x0 || x > x1 || y < y0 || y > y1 || z < z0 || z > z1) BlockType.Invalid
+			else blocks(
+				(z - z0) + dz * ( (y - y0) + dy * (x - x0) )
+			)
+		}
 	}
 }
 
@@ -187,11 +198,11 @@ object NetherMultiblock extends MultiblockImpl
 		for (y1 <- y+1 to y+PortalPillarHeight )
 			GatewayMod.BlockGatewayAir.placePortal(world, x, y1, z)
 		// additional platform
-		for ((x, y, z) <- Utils.enumVolume(world, x - 2, y, z - 2, x + 2, y, z + 2))
+		for ((x, y, z) <- Utils.enumVolume(x - 2, y, z - 2, x + 2, y, z + 2))
 			if (world.isAirBlock(x, y, z))
 				world.setBlock(x, y, z, Blocks.stone)
 		// shielding
-		for ((x, y, z) <- Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight , z + 1))
+		for ((x, y, z) <- Utils.enumVolume(x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight , z + 1))
 			if (world.getBlock(x, y, z) != GatewayMod.BlockGatewayAir)
 				world.setBlock(x, y, z, GatewayMod.BlockGatewayAir, GatewayMod.BlockGatewayAir.Shield, 3)
 	}
@@ -200,12 +211,12 @@ object NetherMultiblock extends MultiblockImpl
 	{
 		// dispose everything above platform
 		for {
-			(x, y, z) <- Utils.enumVolume(world, x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
+			(x, y, z) <- Utils.enumVolume(x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
 		}
 			if (world.getBlock(x, y, z) == GatewayMod.BlockGatewayAir)
 				world.setBlockToAir(x, y, z)
 		// dispose platform
-		for ((x, y, z) <- Utils.enumVolume(world, x - 1, y, z - 1, x + 1, y, z + 1))
+		for ((x, y, z) <- Utils.enumVolume(x - 1, y, z - 1, x + 1, y, z + 1))
 			world.setBlock(x, y, z, Blocks.netherrack)
 		// dispose core
 		world.setBlock(x, y, z, Blocks.obsidian)
