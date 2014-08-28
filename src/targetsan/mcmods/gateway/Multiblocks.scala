@@ -141,8 +141,8 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	// Algorithm suggests that endpoint volume shouldn't contain 'invalid' blocks
 	// So presense of other gateways is marked by 'Invalid' type, returned in certain radius
 	// Which is 1 less than dead zone - because endpoint radius is 1
-	private val DeadR = 4
-	private val LookupR = 3
+	private val DeadR = 8
+	private val LookupR = 5
 	private val EndpointR = 2
 	private val HeightFractions = 4 // N, used for 1/Nth of actual dimension height
 	
@@ -218,7 +218,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	private def ratePosition(x: Int, y: Int, z: Int, volume: VolumeFunc): Int =
 	{
 		import BlockType._
-		val upperRate = Utils
+		val upperRate = Utils // Calculate ratings sum for upper part, which is pillar+shield
 			.enumVolume(x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
 			.foldLeft(0)
 			{ case (r, (x, y, z)) =>
@@ -231,7 +231,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 				}
 			}
 		
-		Utils
+		Utils // Calculate ratings for lower part, which is main platform + extension
 		.enumVolume(x - 2, y, z - 2, x + 2, y, z + 2)
 		.foldLeft(upperRate)
 		{ case (r, (x, y, z)) =>
