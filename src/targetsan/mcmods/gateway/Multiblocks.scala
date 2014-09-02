@@ -44,7 +44,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		if (world.provider.dimensionId == to.provider.dimensionId)
 			return Failure(new Exception(s"Redstone isn't powerful enough to open gateway from ${to.provider.getDimensionName()}. Try something different."))
 
-		findExit2(world, x, y, z) match
+		findExit(world, x, y, z) match
 		{
 			case Left(message) => Failure(new Exception(message))
 			case Right((ex, ey, ez)) =>
@@ -92,18 +92,6 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		(mapCoord(x), (to.provider.getActualHeight - 1) / 2, mapCoord(z))
 	}
 	
-	private def findExit(from: World, x: Int, y: Int, z: Int): Either[String, (Int, Int, Int)] =
-	{
-		val to = Gateway.dimension
-		// Compute destination coordinates
-		val (ex, ey, ez) = translatePoint(from, x, y, z, to)
-		// Check if destination point is free
-		if (!isDestinationFree(to, ex, ey, ez))
-			Left(s"Another gateway's exit in the ${to.provider.getDimensionName()} prevents this gateway from opening")
-		else
-			Right((ex, ey, ez))
-	}
-
 	private def isMultiblockPresent(w: World, x: Int, y: Int, z: Int) =
 		w.getBlock(x, y, z) == Blocks.redstone_block &&
 		// corners
@@ -117,18 +105,8 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		w.getBlock(x, y, z - 1) == Blocks.glass &&
 		w.getBlock(x, y, z + 1) == Blocks.glass
 
-    // Checks if there are no active gateways in the nether too near
-	private def isDestinationFree(to: World, x: Int, y: Int, z: Int): Boolean =
-	{
-		val Radius = 7
-		Utils.enumVolume(
-				x - Radius, 0, z - Radius,
-				x + Radius, to.provider.getActualHeight - 1, z + Radius
-			)
-			.forall { case (x, y, z) => to.getBlock(x, y, z) != GatewayMod.BlockGatewayBase }
-	}
 	// Proper scan algorithm
-	private def findExit2(from: World, x0: Int, y0: Int, z0: Int): Either[String, (Int, Int, Int)] =
+	private def findExit(from: World, x0: Int, y0: Int, z0: Int): Either[String, (Int, Int, Int)] =
 	{
 		val to = Gateway.dimension
 		val (cx, cy, cz) = translatePoint(from, x0, y0, z0, to)
@@ -163,8 +141,8 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	// Algorithm suggests that endpoint volume shouldn't contain 'invalid' blocks
 	// So presense of other gateways is marked by 'Invalid' type, returned in certain radius
 	// Which is 1 less than dead zone - because endpoint radius is 1
-	private val DeadR = 4
-	private val LookupR = 3
+	private val DeadR = 8
+	private val LookupR = 5
 	private val EndpointR = 2
 	private val HeightFractions = 4 // N, used for 1/Nth of actual dimension height
 	
@@ -240,7 +218,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	private def ratePosition(x: Int, y: Int, z: Int, volume: VolumeFunc): Int =
 	{
 		import BlockType._
-		val upperRate = Utils
+		val upperRate = Utils // Calculate ratings sum for upper part, which is pillar+shield
 			.enumVolume(x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
 			.foldLeft(0)
 			{ case (r, (x, y, z)) =>
@@ -253,7 +231,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 				}
 			}
 		
-		Utils
+		Utils // Calculate ratings for lower part, which is main platform + extension
 		.enumVolume(x - 2, y, z - 2, x + 2, y, z + 2)
 		.foldLeft(upperRate)
 		{ case (r, (x, y, z)) =>
