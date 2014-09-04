@@ -210,7 +210,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 			// Mark all columns in other GW's 'dead zone' as 'dead'
 			if (entity != null && entity.isInstanceOf[TileGateway])
 				for {x1 <- x - EffDeadR to x + EffDeadR; z1 <- z - EffDeadR to z + EffDeadR}
-					setDead(x, y, true)
+					setDead(x1, z1, true)
 			// Qualify block only if it wasn't already qualified, or shadowed by dead zone
 			if (getType(x, y, z) == BlockType.None)
 				setType(x, y, z,
