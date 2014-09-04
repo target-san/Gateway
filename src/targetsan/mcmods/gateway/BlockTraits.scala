@@ -33,7 +33,7 @@ trait MetaBlock[T >: Null]
 	protected def allSubBlocks = table
 }
 // Not actually a trait, but a base class for all sub-blocks
-class SubBlock extends BlockContainer(Material.air) with TeleportActor
+class SubBlock(material: Material) extends BlockContainer(material) with TeleportActor
 {
 	override def createNewTileEntity(world: World, meta: Int): TileEntity = null
 	override def hasTileEntity(meta: Int) = false

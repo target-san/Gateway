@@ -89,14 +89,17 @@ class BlockGateway extends BlockContainer(Material.rock)
 	override def collisionRayTrace(world: World, x: Int, y: Int, z: Int, startVec: Vec3, endVec: Vec3): MovingObjectPosition =
 		subBlock(world, x, y, z).collisionRayTrace(world, x, y, z, startVec, endVec)
 	
-	// Collision box overrides
+	// Block geometry
 	override def getCollisionBoundingBoxFromPool(world: World, x: Int, y: Int, z: Int) =
 		subBlock(world, x, y, z).getCollisionBoundingBoxFromPool(world, x, y, z)
 
 	override def addCollisionBoxesToList(world: World, x: Int, y: Int, z: Int, mask: AxisAlignedBB, boxes: java.util.List[_], entity: Entity) =
 		subBlock(world, x, y, z).addCollisionBoxesToList(world, x, y, z, mask, boxes, entity)
 	
-	// Render and other fanciness
+	override def isNormalCube(world: IBlockAccess, x: Int, y: Int, z: Int): Boolean =
+		subBlock(world, x, y, z).isNormalCube(world, x, y, z)
+	
+		// Render and other fanciness
 	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: java.util.Random) =
 		subBlock(world, x, y, z).randomDisplayTick(world, x, y, z, random)
 	
@@ -115,7 +118,7 @@ class BlockGateway extends BlockContainer(Material.rock)
 		allSubBlocks foreach { _._2.registerBlockIcons(register) }
 }
 
-class SubBlockCore(val multiblock: Multiblock) extends SubBlock
+class SubBlockCore(val multiblock: Multiblock) extends SubBlock(Material.rock)
 {
 	protected var blockTopIcon: IIcon = null
 	
@@ -136,7 +139,7 @@ class SubBlockCore(val multiblock: Multiblock) extends SubBlock
 		world.getTileEntity(x, y, z).asInstanceOf[TileGateway].teleportEntity(entity)
 }
 
-class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String, private val side: Int = -1) extends SubBlock
+class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String, private val side: Int = -1) extends SubBlock(Material.rock)
 {
 	val isDiagonal = xOffset != 0 && zOffset != 0
 	setBlockTextureName(textureName)
@@ -184,7 +187,7 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String,
 	}
 }
 
-class SubBlockPillar extends SubBlock
+class SubBlockPillar extends SubBlock(Material.air)
 	with NotCollidable
 	with NotActivable
 {
