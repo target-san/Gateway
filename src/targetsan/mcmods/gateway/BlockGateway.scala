@@ -26,30 +26,22 @@ class BlockGateway extends BlockContainer(Material.rock)
 	setBlockName("GatewayBase")
 	setStepSound(Block.soundTypePiston)
 	
-	val RedstoneCore  = 0 // Default core block
-	val SatNW = 1
-	val SatN  = 2
-	val SatNE = 3
-	val SatE  = 4
-	val SatSE = 5
-	val SatS  = 6
-	val SatSW = 7
-	val SatW  = 8
-	val MirrorCore = 9
-	val Pillar = 10
+	val RedstoneCore  = new SubBlockCore(RedstoneCoreMultiblock)
+	val MirrorCore = new SubBlockCore(NetherMultiblock)
+	val Pillar = new SubBlockPillar
 	
 	registerSubBlocks(
-		RedstoneCore -> new SubBlockCore(RedstoneCoreMultiblock)
-		, SatNW -> new SubBlockSatellite( -1, -1, "minecraft:obsidian")
-		, SatN  -> new SubBlockSatellite(  0, -1, "minecraft:obsidian", 0)
-		, SatNE -> new SubBlockSatellite(  1, -1, "minecraft:obsidian")
-		, SatE  -> new SubBlockSatellite(  1,  0, "minecraft:obsidian", 1)
-		, SatSE -> new SubBlockSatellite(  1,  1, "minecraft:obsidian")
-		, SatS  -> new SubBlockSatellite(  0,  1, "minecraft:obsidian", 2)
-		, SatSW -> new SubBlockSatellite( -1,  1, "minecraft:obsidian")
-		, SatW  -> new SubBlockSatellite( -1,  0, "minecraft:obsidian", 3)
-		, MirrorCore -> new SubBlockCore(NetherMultiblock)
-		, Pillar -> new SubBlockPillar
+		RedstoneCore, 
+		new SubBlockSatellite( -1, -1, "minecraft:obsidian"),
+		new SubBlockSatellite(  0, -1, "minecraft:obsidian", 0),
+		new SubBlockSatellite(  1, -1, "minecraft:obsidian"),
+		new SubBlockSatellite(  1,  0, "minecraft:obsidian", 1),
+		new SubBlockSatellite(  1,  1, "minecraft:obsidian"),
+		new SubBlockSatellite(  0,  1, "minecraft:obsidian", 2),
+		new SubBlockSatellite( -1,  1, "minecraft:obsidian"),
+		new SubBlockSatellite( -1,  0, "minecraft:obsidian", 3),
+		MirrorCore, 
+		Pillar 
 	)
 	
 	private def subsOfType[T <: SubBlock](implicit m: Manifest[T]) = 

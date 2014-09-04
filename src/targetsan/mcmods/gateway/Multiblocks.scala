@@ -21,11 +21,11 @@ trait MultiblockImpl extends Multiblock
 	protected def rawAssemble(world: World, x: Int, y: Int, z: Int) =
 	{
 		// Satellite platform blocks
-		for ((i, sat) <- GatewayMod.BlockGateway.satellites)
-			world.setBlock(x + sat.xOffset, y, z + sat.zOffset, GatewayMod.BlockGateway, i, 3)
+		for ((_, sat) <- GatewayMod.BlockGateway.satellites)
+			sat.place(world, x + sat.xOffset, y, z + sat.zOffset)
 		// Portal column
 		for (y1 <- y+1 to y+PortalPillarHeight )
-			world.setBlock(x, y1, z, GatewayMod.BlockGateway, GatewayMod.BlockGateway.Pillar , 3)
+			GatewayMod.BlockGateway.Pillar.place(world, x, y1, z)
 	}
 	
 	protected def mutualInit(from: World, x1: Int, y1: Int, z1: Int, endpoint: MultiblockImpl, to: World, x2: Int, y2: Int, z2: Int, owner: EntityPlayer)
@@ -85,7 +85,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	override def rawAssemble(world: World, x: Int, y: Int, z: Int)
 	{
 		// Core
-		world.setBlock(x, y, z, GatewayMod.BlockGateway, GatewayMod.BlockGateway.RedstoneCore, 3)
+		GatewayMod.BlockGateway.RedstoneCore.place(world, x, y, z)
 		// main platform and pillar
 		super.rawAssemble(world, x, y, z)
 	}
@@ -257,7 +257,7 @@ object NetherMultiblock extends MultiblockImpl
 	override def rawAssemble(world: World, x: Int, y: Int, z: Int) =
 	{
 		// Core
-		world.setBlock(x, y, z, GatewayMod.BlockGateway, GatewayMod.BlockGateway.MirrorCore, 3)
+		GatewayMod.BlockGateway.MirrorCore.place(world, x, y, z)
 		
 		// main platform and pillar
 		super.rawAssemble(world, x, y, z)
