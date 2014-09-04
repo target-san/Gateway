@@ -123,23 +123,32 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		def distFactor(x: Int, y: Int, z: Int): Double =
 			Math.log(sqr(x - cx) + sqr((y - cy) / 2) + sqr(z - cz) + 1)
 		
-		Utils
+		val (anchors, normals) = Utils
 		.enumVolume(cx - LookupR, cy - LookupH, cz - LookupR, cx + LookupR, cy + LookupH, cz + LookupR)
 		.view
 		.map(pos => (pos._1, pos._2, pos._3, ratePosition(pos._1, pos._2, pos._3, volume) ) ) // calculate position-independent rates
 		.filter(_._4 != Int.MaxValue) // Get rid of invalid positions
 		.map({ case (x, y, z, r) => (x, y, z, r + distFactor(x, y, z)) }) // Add distance factor
 		.sortBy(_._4) // Sort by rate
-		.headOption match {
-			case Some((x, y, z, _)) => Right((x, y, z))
-			case _ => Left("Gateway cannot open - there are obstacles on the other side. Might be other gateway too near")
+		.partition(_._4  < 0)
+		
+		anchors.length match {
+			case 1 => // exactly one anchor, as expected
+				val pos = anchors.head
+				Right((pos._1, pos._2, pos._3))
+			case 0 => // no anchors, so just use most suitable
+				normals.headOption match {
+					case Some((x, y, z, _)) => Right((x, y, z))
+					case _ => Left("Gateway cannot open - there are obstacles on the other side. Might be other gateway too near")
+				}
+			case _ => Left("More than one usable anchor detected, so portal cannot open. Please remove all except one, or let it open by itself")
 		}
 	}
 	
 	private object BlockType extends Enumeration
 	{
 		type BlockType = Value
-		val None, Invalid, Solid, Complex, Liquid, Air = Value
+		val None, Invalid, Solid, Complex, Liquid, Air, Anchor = Value
 	}
 	// Scans volume and returns mapping - coordinates to block type
 	// Algorithm suggests that endpoint volume shouldn't contain 'invalid' blocks
@@ -208,6 +217,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 					{
 						val b = w.getBlock(x, y, z)
 						if (b.getBlockHardness(w, x, y, z) < 0) BlockType.Invalid
+						else if (b == Blocks.redstone_block) BlockType.Anchor
 						else if (b.isAir(w, x, y, z)) BlockType.Air
 						else if (b.isInstanceOf[BlockLiquid]) BlockType.Liquid 
 						else if (b.isBlockNormalCube()) BlockType.Solid
@@ -227,7 +237,6 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 			.enumVolume(x - EndpointR, y + 1, z - EndpointR, x + EndpointR, y + PortalPillarHeight + 1, z + EndpointR)
 			.foldLeft(0)
 			{ case (r, (x, y, z)) =>
-				if (r == Int.MaxValue) r
 				volume(x, y, z) match {
 					case Invalid | Liquid => Int.MaxValue
 					case _ => r
@@ -246,7 +255,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 				}
 			}
 		
-		Utils // Calculate ratings for lower part, which is main platform + extension
+		val rate = Utils // Calculate ratings for lower part, which is main platform + extension
 		.enumVolume(x - 2, y, z - 2, x + 2, y, z + 2)
 		.foldLeft(pillarRate)
 		{ case (r, (x, y, z)) =>
@@ -257,6 +266,10 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 				case _ => r + 1
 			}
 		}
+		
+		if (rate == Int.MaxValue) rate
+		else if (volume(x, y, z) == Anchor) rate - 1000000
+		else rate
 	}
 }
 
