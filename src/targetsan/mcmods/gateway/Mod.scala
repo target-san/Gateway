@@ -17,13 +17,11 @@ object GatewayMod {
 	val MODID = "gateway"
 		
 	val BlockGateway = new BlockGateway
-	val BlockPillar  = new BlockPillar 
     
     @Mod.EventHandler
 	def init(event: FMLInitializationEvent)
 	{
-		GameRegistry.registerBlock(BlockGateway, "GatewayBase")
-		GameRegistry.registerBlock(BlockPillar,  "GatewayAir")
+		GameRegistry.registerBlock(BlockGateway, "BlockGateway")
 		GameRegistry.registerTileEntity(classOf[TileGateway], "tileGateway")
 	}
 

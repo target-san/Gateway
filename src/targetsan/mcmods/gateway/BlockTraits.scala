@@ -56,6 +56,7 @@ trait NotACube extends Block
 	override def renderAsNormalBlock = false
 	override def isOpaqueCube = false
 	override def isBlockNormalCube = false
+	override def getRenderBlockPass = 1
 }
 
 trait Unbreakable extends Block
