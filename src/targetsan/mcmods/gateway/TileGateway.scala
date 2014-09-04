@@ -195,7 +195,7 @@ class TileGateway extends TileEntity
 		
 		state = Disposing
 		// Remove multiblock here
-		GatewayMod.BlockGatewayBase.cores(metadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
+		GatewayMod.BlockGateway.cores(metadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
 		val exitTE = exitDim.getTileEntity(exitX, exitY, exitZ)
 		if (exitTE != null && exitTE.isInstanceOf[TileGateway])

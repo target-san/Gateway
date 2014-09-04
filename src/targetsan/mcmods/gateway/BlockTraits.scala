@@ -9,6 +9,8 @@ import net.minecraft.util.AxisAlignedBB
 import net.minecraft.block.BlockContainer
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.block.material.Material
+import net.minecraft.util.Vec3
+import net.minecraft.util.MovingObjectPosition
 
 trait MetaBlock[T >: Null]
 {
@@ -62,11 +64,14 @@ trait Unbreakable extends Block
 	setResistance(6000000.0F)
 }
 
-trait Ghostly extends Block
+trait NotCollidable extends Block
 {
-	setBlockBounds(0, 0, 0, 0, 0, 0)
-	
-	override def getSelectedBoundingBoxFromPool(world: World, x: Int, y: Int, z: Int) = null
 	override def getCollisionBoundingBoxFromPool(world: World, x: Int, y: Int, z: Int) = null
 	override def addCollisionBoxesToList(world: World, x: Int, y: Int, z: Int, mask: AxisAlignedBB, boxes: java.util.List[_], entity: Entity) { }
+}
+
+trait NotActivable extends Block
+{
+	override def getSelectedBoundingBoxFromPool(world: World, x: Int, y: Int, z: Int) = null
+	override def collisionRayTrace(world: World, x: Int, y: Int, z: Int, startVec: Vec3, endVec: Vec3): MovingObjectPosition = null
 }

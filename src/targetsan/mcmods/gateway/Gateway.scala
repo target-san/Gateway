@@ -24,7 +24,7 @@ object Gateway
 		if (event.entityPlayer.getHeldItem.getItem == net.minecraft.init.Items.flint_and_steel)
 		if (event.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK)
 			GatewayMod
-			.BlockGatewayBase
+			.BlockGateway
 			.cores
 			.foldLeft[Try[Boolean]](Success(false))
 			{	case (Success(false), (_, core)) =>

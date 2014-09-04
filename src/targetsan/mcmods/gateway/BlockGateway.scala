@@ -10,12 +10,11 @@ import net.minecraft.world.World
 import net.minecraft.util.IIcon
 import net.minecraft.entity.player.EntityPlayer
 
-class BlockGatewayBase extends BlockContainer(Material.rock)
+class BlockGateway extends BlockContainer(Material.rock)
 	with DropsNothing
-	with Unbreakable
-	with TeleportActor
-	with MetaBlock[SubBlock]
-{
+	with Unbreakable 
+	with TeleportActor 
+	with MetaBlock[SubBlock] {
 	disableStats()
 	setBlockName("GatewayBase")
 	setStepSound(Block.soundTypePiston)
@@ -44,7 +43,7 @@ class BlockGatewayBase extends BlockContainer(Material.rock)
 		, MirrorCore -> new SubBlockCore(NetherMultiblock)
 	)
 	
-	private def subsOfType[T <: SubBlock](implicit m: Manifest[T]) =
+	private def subsOfType[T <: SubBlock](implicit m: Manifest[T]) = 
 		allSubBlocks withFilter { i => m.erasure.isInstance(i._2) } map { i => (i._1, i._2.asInstanceOf[T]) }
 	
 	def cores      = subsOfType[SubBlockCore]
