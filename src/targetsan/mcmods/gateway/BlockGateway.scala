@@ -21,6 +21,7 @@ class BlockGateway extends BlockContainer(Material.rock)
 	with Unbreakable 
 	with TeleportActor 
 	with MetaBlock[SubBlock] 	with NotACube
+ 	with NoCreativePick
 {
 	disableStats()
 	setBlockName("GatewayBase")

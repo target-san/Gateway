@@ -10,7 +10,7 @@
   "credits":     "",
   "logoFile":    "",
   "screenshots": [],
-  "dependencies": [],
+  "dependencies": [ "NotEnoughItems" ],
   "requiredMods": [ "Forge" ]
 }
 ]

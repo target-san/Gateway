@@ -11,6 +11,7 @@ import net.minecraft.tileentity.TileEntity
 import net.minecraft.block.material.Material
 import net.minecraft.util.Vec3
 import net.minecraft.util.MovingObjectPosition
+import net.minecraft.item.ItemStack
 
 trait MetaBlock[T <: MetaPart] extends Block
 {
@@ -80,6 +81,11 @@ trait TeleportActor
 trait DropsNothing extends Block
 {
 	override def getItemDropped(meta: Int, random: java.util.Random, fortune: Int): Item = null
+}
+// There's no sense in picking gateway block - it works properly only when properly initialized
+trait NoCreativePick extends Block
+{
+	override def getPickBlock(target: MovingObjectPosition, world: World, x: Int, y: Int, z: Int): ItemStack = null
 }
 
 trait NotACube extends Block

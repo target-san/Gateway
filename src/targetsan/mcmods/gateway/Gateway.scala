@@ -9,11 +9,26 @@ import net.minecraft.util.ChatComponentText
 import net.minecraft.init.Blocks
 import net.minecraft.util.ChatStyle
 import net.minecraft.util.EnumChatFormatting
+import net.minecraftforge.event.world.WorldEvent
+import net.minecraft.item.ItemStack
+import net.minecraftforge.oredict.OreDictionary
+import cpw.mods.fml.common.Loader
 
 object Gateway
 {
 	val DIMENSION_ID = -1 // Nether
 	def dimension = Utils.world(DIMENSION_ID)
+	
+	private val BlockGatewayItemStack = new ItemStack(GatewayMod.BlockGateway, 1, OreDictionary.WILDCARD_VALUE)
+	
+	@SubscribeEvent
+	def onWorldLoad(event: WorldEvent.Load): Unit =
+	{
+		if (event.world.isRemote && // client-only
+			Loader.isModLoaded("NotEnoughItems") // makes sense only for NEI
+		)
+			codechicken.nei.api.API.hideItem(BlockGatewayItemStack)
+	}
 	
     @SubscribeEvent
     def onFlintAndSteelPreUse(event: PlayerInteractEvent): Unit =

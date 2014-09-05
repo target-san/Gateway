@@ -45,6 +45,10 @@ sourceSets {
         }
     }
 }
+
+dependencies {
+    compile files("./lib/NEIStub.jar")
+}
 // Standard thing with setting properties in mcmod.info
 processResources
 {
