@@ -23,12 +23,9 @@ object Gateway
 	
 	@SubscribeEvent
 	def onWorldLoad(event: WorldEvent.Load): Unit =
-	{
-		if (event.world.isRemote && // client-only
-			Loader.isModLoaded("NotEnoughItems") // makes sense only for NEI
-		)
+		if (event.world.isRemote) // client-only
+		if (Loader.isModLoaded("NotEnoughItems")) // makes sense only for NEI
 			codechicken.nei.api.API.hideItem(BlockGatewayItemStack)
-	}
 	
     @SubscribeEvent
     def onFlintAndSteelPreUse(event: PlayerInteractEvent): Unit =
