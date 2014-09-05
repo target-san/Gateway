@@ -68,6 +68,8 @@ class SubBlock(material: Material) extends BlockContainer(material)
 	override def hasTileEntity(meta: Int) = false
 	
 	override def teleportEntity(w: World, x: Int, y: Int, z: Int, entity: Entity) { }
+	// Workaround, default impl will lead to infinite recursion
+	override def getLightValue(world: IBlockAccess, x: Int, y: Int, z: Int) = getLightValue()
 }
 
 trait TeleportActor

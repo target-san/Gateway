@@ -91,7 +91,11 @@ class BlockGateway extends BlockContainer(Material.rock)
 	override def isNormalCube(world: IBlockAccess, x: Int, y: Int, z: Int): Boolean =
 		subBlock(world, x, y, z).isNormalCube(world, x, y, z)
 	
-		// Render and other fanciness
+	// Light
+	override def getLightValue(world: IBlockAccess, x: Int, y: Int, z: Int) =
+		subBlock(world, x, y, z).getLightValue(world, x, y, z)
+	
+	// Render and other fanciness
 	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: java.util.Random) =
 		subBlock(world, x, y, z).randomDisplayTick(world, x, y, z, random)
 	
@@ -243,6 +247,7 @@ class SubBlockPillar extends SubBlock(Material.air)
 	with NotActivable
 {
 	setBlockTextureName("gateway:pillar")
+	setLightLevel(1.0F)
 	
 	override def onEntityCollidedWithBlock(world: World, x: Int, y: Int, z: Int, entity: Entity) =
 	{
