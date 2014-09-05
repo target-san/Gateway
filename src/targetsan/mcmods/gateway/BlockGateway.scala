@@ -183,10 +183,7 @@ class SubBlockPillar extends SubBlock(Material.air)
 	with NotCollidable
 	with NotActivable
 {
-	setBlockTextureName("gateway:pillar-side")
-	
-	protected val topIconName = "gateway:pillar-top"
-	protected var topIcon: IIcon = null
+	setBlockTextureName("gateway:pillar")
 	
 	override def onEntityCollidedWithBlock(world: World, x: Int, y: Int, z: Int, entity: Entity) =
 	{
@@ -207,14 +204,4 @@ class SubBlockPillar extends SubBlock(Material.air)
 		case 1 => world.getBlock(x, y, z) != GatewayMod.BlockGateway
 		case _ => super.shouldSideBeRendered(world, x, y, z, side)
 		}
-	
-	override def getIcon(side: Int, meta: Int): IIcon =
-		if (side == 0 || side == 1) topIcon
-		else super.getIcon(side, meta)
-	
-	override def registerBlockIcons(register: IIconRegister)
-	{
-		super.registerBlockIcons(register)
-		topIcon = register.registerIcon(topIconName)
-	}
 }
