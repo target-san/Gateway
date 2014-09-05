@@ -32,14 +32,14 @@ class BlockGateway extends BlockContainer(Material.rock)
 	
 	registerSubBlocks(
 		RedstoneCore, 
-		new SubBlockSatellite( -1, -1, "minecraft:obsidian"),
-		new SubBlockSatellite(  0, -1, "minecraft:obsidian", 0),
-		new SubBlockSatellite(  1, -1, "minecraft:obsidian"),
-		new SubBlockSatellite(  1,  0, "minecraft:obsidian", 1),
-		new SubBlockSatellite(  1,  1, "minecraft:obsidian"),
-		new SubBlockSatellite(  0,  1, "minecraft:obsidian", 2),
-		new SubBlockSatellite( -1,  1, "minecraft:obsidian"),
-		new SubBlockSatellite( -1,  0, "minecraft:obsidian", 3),
+		new SubBlockSatellite( -1, -1),
+		new SubBlockSatellite(  0, -1),
+		new SubBlockSatellite(  1, -1),
+		new SubBlockSatellite(  1,  0),
+		new SubBlockSatellite(  1,  1),
+		new SubBlockSatellite(  0,  1),
+		new SubBlockSatellite( -1,  1),
+		new SubBlockSatellite( -1,  0),
 		MirrorCore, 
 		Pillar 
 	)
@@ -131,10 +131,19 @@ class SubBlockCore(val multiblock: Multiblock) extends SubBlock(Material.rock)
 		world.getTileEntity(x, y, z).asInstanceOf[TileGateway].teleportEntity(entity)
 }
 
-class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String, private val side: Int = -1) extends SubBlock(Material.rock)
+class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Material.rock)
 {
 	val isDiagonal = xOffset != 0 && zOffset != 0
+	val side = (xOffset, zOffset) match {
+		case (0, -1) => 0
+		case (1, 0)  => 1
+		case (0, 1)  => 2
+		case (-1, 0) => 3
+		case _ => -1
+	}
 	setBlockTextureName("gateway:smooth_obsidian")
+	
+	private val icons = Array.fill[IIcon](6)(null)
 	
 	override def onBlockActivated(world: World, x: Int, y: Int, z: Int, player: EntityPlayer, side: Int, xTouch: Float, yTouch: Float, zTouch: Float): Boolean =
 	{
@@ -180,20 +189,53 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String,
 
 	override def registerBlockIcons(icons: IIconRegister)
 	{
+		import ForgeDirection._
+		import Utils._
 		// Load base icons
 		val topCorner = icons.registerIcon("gateway:top-corner")
 		val topSide = icons.registerIcon("gateway:top-side")
+		val topSide90 = icons.registerIcon("gateway:top-side-90")
 		val sideCorner = icons.registerIcon("gateway:side-corner")
 		val sideSide = icons.registerIcon("gateway:side-side")
-		// Default loader
+		// Default icons
 		super.registerBlockIcons(icons)
+		for (i <- VALID_DIRECTIONS)
+			this.icons(i.ordinal) = blockIcon
+		// Then override if needed
+		(xOffset, zOffset) match
+		{
+			case (-1, -1) => // North-west
+				this.icons(UP.ordinal)    = topCorner
+				this.icons(WEST.ordinal)  = sideCorner
+				this.icons(NORTH.ordinal) = sideCorner.flippedU
+			case (0, -1) => // North
+				this.icons(UP.ordinal)    = topSide
+				this.icons(NORTH.ordinal) = sideSide
+			case (1, -1) => // North-east
+				this.icons(UP.ordinal)    = topCorner.flippedU
+				this.icons(NORTH.ordinal) = sideCorner
+				this.icons(EAST.ordinal)  = sideCorner.flippedU
+			case (1, 0) => // East
+				this.icons(UP.ordinal)    = topSide90
+				this.icons(EAST.ordinal)  = sideSide
+			case (1, 1) => // South-east
+				this.icons(UP.ordinal)    = topCorner.flippedUV
+				this.icons(EAST.ordinal)  = sideCorner
+				this.icons(SOUTH.ordinal) = sideCorner.flippedU
+			case (0, 1) => // South
+				this.icons(UP.ordinal)    = topSide.flippedV
+				this.icons(SOUTH.ordinal) = sideSide
+			case (-1, 1) => // South-west
+				this.icons(UP.ordinal)    = topCorner.flippedV
+				this.icons(SOUTH.ordinal) = sideCorner
+				this.icons(WEST.ordinal)  = sideCorner.flippedU
+			case (-1, 0) => // West
+				this.icons(UP.ordinal)    = topSide90.flippedU
+				this.icons(WEST.ordinal)  = sideSide
+		}
 	}
 	
-	override def getIcon(side: Int, meta: Int): IIcon =
-		ForgeDirection.getOrientation(side) match {
-		case _ => blockIcon
-		}
-	
+	override def getIcon(side: Int, meta: Int): IIcon = icons(side)
 }
 
 class SubBlockPillar extends SubBlock(Material.air)
