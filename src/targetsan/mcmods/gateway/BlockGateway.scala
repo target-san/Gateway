@@ -119,8 +119,8 @@ class SubBlockCore(val multiblock: Multiblock) extends SubBlock(Material.rock)
 
 	override def registerBlockIcons(icons: IIconRegister)
 	{
-		blockIcon = icons.registerIcon("minecraft:obsidian")
-		blockTopIcon = icons.registerIcon("minecraft:portal")
+		blockIcon = icons.registerIcon("gateway:smooth_obsidian")
+		blockTopIcon = icons.registerIcon("gateway:top-center")
 	}
 	
 	override def getIcon(side: Int, meta: Int): IIcon =
@@ -134,7 +134,7 @@ class SubBlockCore(val multiblock: Multiblock) extends SubBlock(Material.rock)
 class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String, private val side: Int = -1) extends SubBlock(Material.rock)
 {
 	val isDiagonal = xOffset != 0 && zOffset != 0
-	setBlockTextureName(textureName)
+	setBlockTextureName("gateway:smooth_obsidian")
 	
 	override def onBlockActivated(world: World, x: Int, y: Int, z: Int, player: EntityPlayer, side: Int, xTouch: Float, yTouch: Float, zTouch: Float): Boolean =
 	{
@@ -177,6 +177,23 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int, textureName: String,
 		if (tile != null)
 			tile.invalidate()
 	}
+
+	override def registerBlockIcons(icons: IIconRegister)
+	{
+		// Load base icons
+		val topCorner = icons.registerIcon("gateway:top-corner")
+		val topSide = icons.registerIcon("gateway:top-side")
+		val sideCorner = icons.registerIcon("gateway:side-corner")
+		val sideSide = icons.registerIcon("gateway:side-side")
+		// Default loader
+		super.registerBlockIcons(icons)
+	}
+	
+	override def getIcon(side: Int, meta: Int): IIcon =
+		ForgeDirection.getOrientation(side) match {
+		case _ => blockIcon
+		}
+	
 }
 
 class SubBlockPillar extends SubBlock(Material.air)
