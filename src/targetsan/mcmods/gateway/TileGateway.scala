@@ -106,7 +106,7 @@ class TileGateway extends TileEntity
     
 	def teleportEntity(entity: Entity)
 	{
-	    if (worldObj.isRemote || entity == null) // Performed only server-side
+	    if (worldObj.isRemote || entity == null || entity.timeUntilPortal > 0) // Performed only server-side, when entity has no cooldown on it
 	    	return
 	    checkGatewayValid
 	    val scheduled = getBottomMount(entity) // avoid multi-port on riders/mounts
@@ -219,7 +219,15 @@ class TileGateway extends TileEntity
 	private def teleport(entity: Entity)
 	{
 		val exit = getExitPos(entity)
-		Teleport(entity, exit._1, exit._2, exit._3, exitDim.provider.dimensionId)
+		setCooldown(Teleport(entity, exit._1, exit._2, exit._3, exitDim.provider.dimensionId))
+	}
+	
+	private def setCooldown(entity: Entity): Unit =
+	{
+		if (entity.riddenByEntity != null)
+			setCooldown(entity.riddenByEntity)
+		if (entity.timeUntilPortal < Utils.DefaultCooldown)
+			entity.timeUntilPortal = Utils.DefaultCooldown
 	}
 	
 	private def getExitPos(entity: Entity) = translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord))

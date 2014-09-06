@@ -35,6 +35,8 @@ object GatewayMod {
 
 object Utils
 {
+	val DefaultCooldown = 80
+	
 	val InterDimensionId = -1 // Nether
 	def interDimension = Utils.world(InterDimensionId)
 	
