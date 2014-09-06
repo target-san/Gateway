@@ -45,7 +45,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 {
 	override def assemble(world: World, x: Int, y: Int, z: Int, owner: EntityPlayer): Try[Boolean] =
 	{
-		val to = Gateway.dimension
+		val to = Utils.interDimension
 		if (!isMultiblockPresent(world, x, y, z))
 			return Success(false)
 			
@@ -108,7 +108,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	// Proper scan algorithm
 	private def findExit(from: World, x0: Int, y0: Int, z0: Int): Either[String, (Int, Int, Int)] =
 	{
-		val to = Gateway.dimension
+		val to = Utils.interDimension
 		val (cx, cy, cz) = translatePoint(from, x0, y0, z0, to)
 		
 		val volume = scanVolume(to, cx, cy, cz)

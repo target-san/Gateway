@@ -29,12 +29,15 @@ object GatewayMod {
     @Mod.EventHandler
 	def postInit(event: FMLPostInitializationEvent)
     {
-    	MinecraftForge.EVENT_BUS.register(Gateway)
+    	MinecraftForge.EVENT_BUS.register(EventHandler)
     }
 }
 
 object Utils
 {
+	val InterDimensionId = -1 // Nether
+	def interDimension = Utils.world(InterDimensionId)
+	
 	def world(dim: Int) = MinecraftServer.getServer().worldServerForDimension(dim)
 	
 	def enumVolume(x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =

@@ -3,6 +3,7 @@ package targetsan.mcmods.gateway
 import scala.util._
 import cpw.mods.fml.common.eventhandler.SubscribeEvent
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
+import net.minecraftforge.event.entity.living.{EnderTeleportEvent, LivingSpawnEvent}
 import net.minecraft.world.World
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.util.ChatComponentText
@@ -13,12 +14,11 @@ import net.minecraftforge.event.world.WorldEvent
 import net.minecraft.item.ItemStack
 import net.minecraftforge.oredict.OreDictionary
 import cpw.mods.fml.common.Loader
+import net.minecraft.entity.Entity
+import cpw.mods.fml.common.eventhandler.Event
 
-object Gateway
+object EventHandler
 {
-	val DIMENSION_ID = -1 // Nether
-	def dimension = Utils.world(DIMENSION_ID)
-	
 	private val BlockGatewayItemStack = new ItemStack(GatewayMod.BlockGateway, 1, OreDictionary.WILDCARD_VALUE)
 	
 	@SubscribeEvent
@@ -50,4 +50,17 @@ object Gateway
 					)
 				case _ => ()
 			}
+	// Prevent Endermen from teleporting onto Gateway surface
+	@SubscribeEvent
+	def onEnderTeleport(event: EnderTeleportEvent): Unit =
+		if (isGatewayUnderEntity(event.entity, event.entity.worldObj, event.targetX, event.targetY, event.targetZ))
+			event.setCanceled(true)
+	// Prevent any mobs from spawning directly on Gateway surface
+	@SubscribeEvent
+	def onMobSpawn(event: LivingSpawnEvent.CheckSpawn): Unit =
+		if (isGatewayUnderEntity(event.entity, event.world, event.x, event.y, event.z))
+			event.setResult(Event.Result.DENY)
+	
+	private def isGatewayUnderEntity(entity: Entity, world: World, x: Double, y: Double, z: Double): Boolean =
+		world.getBlock(Math.floor(x).toInt, Math.floor(y - entity.yOffset).toInt - 1, Math.floor(z).toInt) == GatewayMod.BlockGateway
 }
