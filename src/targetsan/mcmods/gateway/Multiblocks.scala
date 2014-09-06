@@ -88,7 +88,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	
 	private def translatePoint(from: World, x: Int, y: Int, z: Int, to: World): (Int, Int, Int) =
 	{
-		def mapCoord(c: Int) = Math.round(c * from.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt
+		def mapCoord(c: Int) = Math.floor(c * from.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt
 		(mapCoord(x), (to.provider.getActualHeight - 1) / 2, mapCoord(z))
 	}
 	
