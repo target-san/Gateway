@@ -63,22 +63,18 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 
 	override def disassemble(world: World, x: Int, y: Int, z: Int) =
 	{
-		// dispose everything above platform
-		for {
-			(x, y, z) <- Utils.enumVolume(x, y + 1, z, x, y + PortalPillarHeight, z)
-		}
+		// dispose pillar
+		for ( y <- (y + 1) to (y + PortalPillarHeight) )
 			if (world.getBlock(x, y, z) == GatewayMod.BlockGateway)
 				world.setBlockToAir(x, y, z)
 		// dispose core
-		//world.setBlock(x, y, z, Blocks.netherrack)
-		world.setBlock(x, y, z, Blocks.redstone_block)
+		world.setBlock(x, y, z, Blocks.netherrack)
 		// dispose platform
 		for ((_, sat) <- GatewayMod.BlockGateway.satellites)
 			world
 				.setBlock(
 					x + sat.xOffset, y, z + sat.zOffset,
-					//if (sat.isDiagonal) Blocks.obsidian else Blocks.gravel // disabled temporarily
-					if (sat.isDiagonal) Blocks.obsidian else Blocks.glass // temporary stub - returns original multiblock
+					if (sat.isDiagonal) Blocks.obsidian else Blocks.gravel
 				)
 	}
 	
@@ -297,10 +293,8 @@ object NetherMultiblock extends MultiblockImpl
 
 	override def disassemble(world: World, x: Int, y: Int, z: Int) =
 	{
-		// dispose everything above platform
-		for {
-			(x, y, z) <- Utils.enumVolume(x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
-		}
+		// dispose pillar
+		for ( y <- (y + 1) to (y + PortalPillarHeight) )
 			if (world.getBlock(x, y, z) == GatewayMod.BlockGateway)
 				world.setBlockToAir(x, y, z)
 		// dispose platform
