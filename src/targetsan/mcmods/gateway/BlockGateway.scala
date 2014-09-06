@@ -32,7 +32,7 @@ class BlockGateway extends BlockContainer(Material.rock)
 	val Pillar = new SubBlockPillar
 	
 	registerSubBlocks(
-		RedstoneCore, 
+		Pillar,
 		new SubBlockSatellite( -1, -1),
 		new SubBlockSatellite(  0, -1),
 		new SubBlockSatellite(  1, -1),
@@ -41,8 +41,8 @@ class BlockGateway extends BlockContainer(Material.rock)
 		new SubBlockSatellite(  0,  1),
 		new SubBlockSatellite( -1,  1),
 		new SubBlockSatellite( -1,  0),
-		MirrorCore, 
-		Pillar 
+		RedstoneCore, 
+		MirrorCore 
 	)
 	
 	private def subsOfType[T <: SubBlock](implicit m: Manifest[T]) = 
