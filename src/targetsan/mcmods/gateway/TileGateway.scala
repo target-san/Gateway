@@ -82,8 +82,6 @@ class TileGateway extends TileEntity
 		val mask = StateMask << StateOffset
 		flags = (flags & ~mask) | newValue
 	}
-	// This list is processed the same tick it's initialized, so it shouldn't be stored in NBT
-	private var teleportQueue: List[Entity] = Nil
 	
 	def init(endpoint: TileGateway, player: EntityPlayer): Unit =
 	{
@@ -109,9 +107,12 @@ class TileGateway extends TileEntity
 	    if (worldObj.isRemote || entity == null || entity.timeUntilPortal > 0) // Performed only server-side, when entity has no cooldown on it
 	    	return
 	    checkGatewayValid
-	    val scheduled = getBottomMount(entity) // avoid multi-port on riders/mounts
-	    if (!teleportQueue.contains(scheduled))
-	    	teleportQueue +:= scheduled
+	    
+	    val teleportTarget = getBottomMount(entity)
+		val exit = getExitPos(teleportTarget)
+		val newEntity = EP3Teleporter.apply(teleportTarget, exit._1, exit._2, exit._3, exitDim.asInstanceOf[WorldServer])
+		if (newEntity != null)
+			setCooldown(newEntity)
 	}
 	
 	def markForDispose(player: EntityPlayer, side: Int)
@@ -145,15 +146,6 @@ class TileGateway extends TileEntity
 		markSideDisposed(side, false)
 	}
 	
-	// Update func
-	override def updateEntity
-	{
-		if (worldObj.isRemote)
-			return
-		// Process teleportation queue, comes from this dimension
-		teleportQueue.foreach(teleport(_))
-		teleportQueue = Nil
-	}
 	// A more unified way to notify multiblock that it's dead
 	override def invalidate
 	{
@@ -214,12 +206,6 @@ class TileGateway extends TileEntity
 			throw new IllegalStateException("Gateway not initialized properly: exit dimension reference is NULL")
 		if (!exitDim.getTileEntity(exitX, exitY, exitZ).isInstanceOf[TileGateway])
 			throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
-	}
-	
-	private def teleport(entity: Entity)
-	{
-		val exit = getExitPos(entity)
-		setCooldown(Teleport(entity, exit._1, exit._2, exit._3, exitDim.provider.dimensionId))
 	}
 	
 	private def setCooldown(entity: Entity): Unit =
