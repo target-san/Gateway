@@ -1,24 +1,18 @@
 package targetsan.mcmods.gateway;
 
-import cpw.mods.fml.common.FMLCommonHandler;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.play.server.S05PacketSpawnPosition;
 import net.minecraft.network.play.server.S07PacketRespawn;
 import net.minecraft.network.play.server.S1DPacketEntityEffect;
 import net.minecraft.network.play.server.S1FPacketSetExperience;
-import net.minecraft.network.play.server.S2BPacketChangeGameState;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.management.ItemInWorldManager;
 import net.minecraft.server.management.ServerConfigurationManager;
-import net.minecraft.util.ChunkCoordinates;
-import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
-import net.minecraft.world.demo.DemoWorldManager;
+import cpw.mods.fml.common.FMLCommonHandler;
 
 /**
  * This is a stripped down {@link enhancedportals.portal.EntityManager} Many
@@ -205,47 +199,5 @@ public class EP3Teleporter {
 
 			return newEntity;
 		}
-	}
-	
-	private EntityPlayerMP respawnPlayerToLocation(EntityPlayerMP player, double x, double y, double z, WorldServer world)
-	{
-		MinecraftServer server = player.mcServer;
-		ServerConfigurationManager config = server.getConfigurationManager();
-
-		player.getServerForPlayer().getEntityTracker().removePlayerFromTrackers(player);
-		player.getServerForPlayer().getEntityTracker().removeEntityFromAllTrackingPlayers(player);
-		player.getServerForPlayer().getPlayerManager().removePlayer(player);
-		config.playerEntityList.remove(player);
-		server.worldServerForDimension(player.dimension).removePlayerEntityDangerously(player); // TODO: Replace with softer removal, which would just mark old entity as dead
-
-		player.dimension = world.provider.dimensionId;
-		ItemInWorldManager worldMgr = server.isDemo()
-			? new DemoWorldManager(world)
-			: new ItemInWorldManager(world);
-
-		EntityPlayerMP newPlayer = new EntityPlayerMP(server, world, player.getGameProfile(), worldMgr);
-		newPlayer.playerNetServerHandler = player.playerNetServerHandler;
-		newPlayer.clonePlayer(player, true);
-		newPlayer.dimension = world.provider.dimensionId;
-		newPlayer.setEntityId(player.getEntityId());
-		// was config.func_72381_a(newPlayer, player, world);
-		newPlayer.theItemInWorldManager.setGameType(player.theItemInWorldManager.getGameType());
-		newPlayer.theItemInWorldManager.initializeGameType(world.getWorldInfo().getGameType());
-		
-		newPlayer.setLocationAndAngles(x, y, z, player.rotationYaw, player.rotationPitch);
-
-		world.theChunkProviderServer.loadChunk((int)newPlayer.posX >> 4, (int)newPlayer.posZ >> 4);
-
-		newPlayer.playerNetServerHandler.sendPacket(new S07PacketRespawn(newPlayer.dimension, newPlayer.worldObj.difficultySetting, newPlayer.worldObj.getWorldInfo().getTerrainType(), newPlayer.theItemInWorldManager.getGameType()));
-		newPlayer.playerNetServerHandler.setPlayerLocation(newPlayer.posX, newPlayer.posY, newPlayer.posZ, newPlayer.rotationYaw, newPlayer.rotationPitch);
-		newPlayer.playerNetServerHandler.sendPacket(new S1FPacketSetExperience(newPlayer.experience, newPlayer.experienceTotal, newPlayer.experienceLevel));
-		config.updateTimeAndWeatherForPlayer(newPlayer, world);
-		world.getPlayerManager().addPlayer(newPlayer);
-		world.spawnEntityInWorld(newPlayer);
-		config.playerEntityList.add(newPlayer);
-		newPlayer.addSelfToInternalCraftingInventory();
-		newPlayer.setHealth(newPlayer.getHealth());
-		FMLCommonHandler.instance().firePlayerRespawnEvent(newPlayer);
-		return newPlayer;
 	}
 }

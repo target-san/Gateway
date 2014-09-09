@@ -108,14 +108,6 @@ class TileGateway extends TileEntity
 	    	return
 	    checkGatewayValid
 	    scheduleTeleport(entity)
-	    
-	    /*
-	    val teleportTarget = getBottomMount(entity)
-		val exit = getExitPos(teleportTarget)
-		val newEntity = EP3Teleporter.apply(teleportTarget, exit._1, exit._2, exit._3, exitDim.asInstanceOf[WorldServer])
-		if (newEntity != null)
-			setCooldown(newEntity)
-		*/
 	}
 	
 	private var teleportQueue: List[Entity] = Nil
