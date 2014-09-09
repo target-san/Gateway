@@ -107,12 +107,39 @@ class TileGateway extends TileEntity
 	    if (worldObj.isRemote || entity == null || entity.timeUntilPortal > 0) // Performed only server-side, when entity has no cooldown on it
 	    	return
 	    checkGatewayValid
+	    scheduleTeleport(entity)
 	    
+	    /*
 	    val teleportTarget = getBottomMount(entity)
 		val exit = getExitPos(teleportTarget)
 		val newEntity = EP3Teleporter.apply(teleportTarget, exit._1, exit._2, exit._3, exitDim.asInstanceOf[WorldServer])
 		if (newEntity != null)
 			setCooldown(newEntity)
+		*/
+	}
+	
+	private var teleportQueue: List[Entity] = Nil
+	
+	private def scheduleTeleport(entity: Entity) =
+	{
+		val mount = getBottomMount(entity)
+		if (!(teleportQueue contains mount))
+			teleportQueue :+= mount
+	}
+	
+	override def updateEntity(): Unit =
+	{
+		if (worldObj.isRemote)
+			return
+			
+		for (e <- teleportQueue)
+		{
+			val exit = getExitPos(e)
+			val newEntity = EP3Teleporter.apply(e, exit._1, exit._2, exit._3, exitDim.asInstanceOf[WorldServer])
+			if (newEntity != null)
+				setCooldown(newEntity)
+		}
+		teleportQueue = Nil
 	}
 	
 	def markForDispose(player: EntityPlayer, side: Int)
