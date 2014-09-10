@@ -1,23 +1,14 @@
 package targetsan.mcmods.gateway
 
-import net.minecraft.tileentity.TileEntity
 import net.minecraft.entity.Entity
-import net.minecraft.world.World
-import net.minecraft.server.MinecraftServer
-import net.minecraft.world.IBlockAccess
-import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.entity.player.EntityPlayer
-import net.minecraft.init.Blocks
-import net.minecraft.world.WorldServer
-import net.minecraft.entity.EntityList
-import cpw.mods.fml.common.FMLCommonHandler
-import net.minecraft.entity.player.EntityPlayerMP
-import net.minecraft.network.play.server.S07PacketRespawn
-import net.minecraft.network.play.server.S1DPacketEntityEffect
-import net.minecraft.potion.PotionEffect
+import net.minecraft.nbt.NBTTagCompound
+import net.minecraft.tileentity.TileEntity
 import net.minecraft.util.ChatComponentText
 import net.minecraft.util.ChatStyle
+import net.minecraft.util.ChunkCoordinates
 import net.minecraft.util.EnumChatFormatting
+import net.minecraft.world.World
 
 class TileGateway extends TileEntity
 {
@@ -84,6 +75,9 @@ class TileGateway extends TileEntity
 	}
 	// This list is processed the same tick it's initialized, so it shouldn't be stored in NBT
 	private var teleportQueue: List[Entity] = Nil
+	
+	def getEndPoint = new ChunkCoordinates(exitX, exitY, exitZ)
+	def getEndWorld = exitDim
 	
 	def init(endpoint: TileGateway, player: EntityPlayer): Unit =
 	{
