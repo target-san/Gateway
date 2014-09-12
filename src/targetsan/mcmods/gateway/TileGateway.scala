@@ -9,6 +9,7 @@ import net.minecraft.util.ChatStyle
 import net.minecraft.util.ChunkCoordinates
 import net.minecraft.util.EnumChatFormatting
 import net.minecraft.world.World
+import net.minecraft.world.WorldServer
 
 class TileGateway extends TileEntity
 {
