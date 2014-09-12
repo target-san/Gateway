@@ -18,7 +18,8 @@ class TileGateway extends TileEntity
 	private var exitX = 0
 	private var exitY = 0
 	private var exitZ = 0
-	private var exitDim: World = null
+	private var exitDim: Int = 0
+	private var exitWorld = new Cached( () => Utils.world(exitDim) )
 	private var owner = EmptyOwner
 	private var ownerName = ""
 	private var flags = 0
@@ -91,7 +92,7 @@ class TileGateway extends TileEntity
 		exitZ = endpoint.zCoord
 		owner = player.getGameProfile().getId()
 		ownerName = player.getGameProfile().getName()
-		exitDim = endpoint.worldObj
+		exitDim = endpoint.worldObj.provider.dimensionId
 		// NB: assemble isn't used here. Because multiblock should be already constructed by the time TE is initialized
 		markDirty();
 		metadata = getBlockMetadata()
@@ -148,7 +149,7 @@ class TileGateway extends TileEntity
 
 		invalidate()
 		player.addChatMessage(
-			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitDim.provider.getDimensionName} was severed")
+			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitWorld.value.provider.getDimensionName} was severed")
 			.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
 		)
 	}
@@ -177,7 +178,8 @@ class TileGateway extends TileEntity
 		exitX = pos(0)
 		exitY = pos(1)
 		exitZ = pos(2)
-		exitDim = Utils.world(pos(3))
+		exitDim = pos(3)
+		exitWorld.reset
 		owner = java.util.UUID.fromString(tag.getString("owner"))
 		ownerName = tag.getString("ownerName")
 		flags = tag.getInteger("flags")
@@ -188,7 +190,7 @@ class TileGateway extends TileEntity
 		if (tag == null)
 			return
 		super.writeToNBT(tag)
-		tag.setIntArray("exitPos", Array(exitX, exitY, exitZ, exitDim.provider.dimensionId))
+		tag.setIntArray("exitPos", Array(exitX, exitY, exitZ, exitDim))
 		tag.setString("owner", owner.toString)
 		tag.setString("ownerName", ownerName)
 		tag.setInteger("flags", flags)
@@ -203,7 +205,7 @@ class TileGateway extends TileEntity
 		// Remove multiblock here
 		GatewayMod.BlockGateway.cores(metadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
-		val exitTE = exitDim.getTileEntity(exitX, exitY, exitZ)
+		val exitTE = exitWorld.value.getTileEntity(exitX, exitY, exitZ)
 		if (exitTE != null && exitTE.isInstanceOf[TileGateway])
 			exitTE.invalidate()
 	}
@@ -218,7 +220,7 @@ class TileGateway extends TileEntity
 			throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
 		if (exitDim == null)
 			throw new IllegalStateException("Gateway not initialized properly: exit dimension reference is NULL")
-		if (!exitDim.getTileEntity(exitX, exitY, exitZ).isInstanceOf[TileGateway])
+		if (!exitWorld.value.getTileEntity(exitX, exitY, exitZ).isInstanceOf[TileGateway])
 			throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
 	}
 	
