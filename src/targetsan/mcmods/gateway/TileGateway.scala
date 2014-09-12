@@ -219,8 +219,6 @@ class TileGateway extends TileEntity
 	{
 		if (owner == null || owner == EmptyOwner)
 			throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
-		if (exitDim == null)
-			throw new IllegalStateException("Gateway not initialized properly: exit dimension reference is NULL")
 		if (!exitWorld.value.getTileEntity(exitX, exitY, exitZ).isInstanceOf[TileGateway])
 			throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
 	}
