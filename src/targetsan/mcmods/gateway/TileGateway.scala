@@ -19,7 +19,7 @@ class TileGateway extends TileEntity
 	private var exitY = 0
 	private var exitZ = 0
 	private var exitDim: Int = 0
-	private var exitWorld = new Cached( () => Utils.world(exitDim) )
+	private val exitWorld = new Cached( () => Utils.world(exitDim) )
 	private var owner = EmptyOwner
 	private var ownerName = ""
 	private var flags = 0
@@ -77,7 +77,7 @@ class TileGateway extends TileEntity
 	}
 	
 	def getEndPoint = new ChunkCoordinates(exitX, exitY, exitZ)
-	def getEndWorld = exitDim
+	def getEndWorld = exitWorld.value
 	
 	def init(endpoint: TileGateway, player: EntityPlayer): Unit =
 	{
@@ -93,6 +93,7 @@ class TileGateway extends TileEntity
 		owner = player.getGameProfile().getId()
 		ownerName = player.getGameProfile().getName()
 		exitDim = endpoint.worldObj.provider.dimensionId
+		exitWorld.reset
 		// NB: assemble isn't used here. Because multiblock should be already constructed by the time TE is initialized
 		markDirty();
 		metadata = getBlockMetadata()
@@ -123,7 +124,7 @@ class TileGateway extends TileEntity
 		for (e <- teleportQueue)
 		{
 			val exit = getExitPos(e)
-			val newEntity = EP3Teleporter.apply(e, exit._1, exit._2, exit._3, exitDim.asInstanceOf[WorldServer])
+			val newEntity = EP3Teleporter.apply(e, exit._1, exit._2, exit._3, exitWorld.value.asInstanceOf[WorldServer])
 			if (newEntity != null)
 				setCooldown(newEntity)
 		}
