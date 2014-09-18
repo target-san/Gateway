@@ -29,6 +29,7 @@ This mod started when I was playing Railcraft actively and wanted some portals w
 
 This mod, as for now, introduces new kind of portal called gateway. It essentially still uses Nether as a travelling dimension - if you need a direct portal, just use something else. I, in my turn, was thinking about making some things easier for some other kind of errort.
 The tradeoff is shortening distance in exchange for making travel (or essentially preparing road) more dangerous.
+The other important property is velocity being kept and exit location being completely predictable. The entity's XZ velocity vector is taken, then the entity is translated thru pillar along that XZ vector just until it stops touching it. So if some cart enters from north, it will leave right to south. This way you can create 4 rail tracks coming thorugh gateway.
 
 So let's get to the business.
 
@@ -69,10 +70,13 @@ You might want to place exit gate in the spot you want. To do so, just place red
 You might've already discovered that all gateway blocks are effectively indestructible. To remove them, you need to ignite 4 fires with flint'n'steel on the blocks where glass blocks were placed. After this, if you're gateway creator, it will be severed.
 Though playing with gates isn't cost-free, as you will get back only obsidian. In normal world, former glass will become gravel, and core is replaced with netherrack. In Nether, gate platform will become obsidian surrounded with netherrack.
 
+## Features in progress:
+
+1. Connectors - gateways should allow to pump items, liquids, power, AE cables and so on.
+
 ## TODO list
 
 1. Test with non-overworld dimensions - namely End, ExtraUtilities' Deep Dark and Mystcraft ages.
 2. Some kind of locator tool - click on block in any world, then see corresponding search volume in Nether being visualized.
-3. Connectors - gateways should allow to pump items, liquids, power, AE cables and so on.
-4. Some method of less lossy gateway shutdown.
-5. Maybe, an OP variant which can be placed anywhere.
+3. Some method of less lossy gateway shutdown.
+4. Maybe, an OP variant which can be placed anywhere.
