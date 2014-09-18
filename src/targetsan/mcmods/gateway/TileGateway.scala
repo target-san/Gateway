@@ -8,7 +8,6 @@ import net.minecraft.util.ChatComponentText
 import net.minecraft.util.ChatStyle
 import net.minecraft.util.ChunkCoordinates
 import net.minecraft.util.EnumChatFormatting
-import net.minecraft.world.World
 import net.minecraft.world.WorldServer
 
 class TileGateway extends TileEntity
@@ -77,7 +76,7 @@ class TileGateway extends TileEntity
 	}
 	
 	def getEndPoint = new ChunkCoordinates(exitX, exitY, exitZ)
-	def getEndWorld = exitWorld.value
+	def getEndWorld = exitWorld.get
 	
 	def init(endpoint: TileGateway, player: EntityPlayer): Unit =
 	{
@@ -90,20 +89,20 @@ class TileGateway extends TileEntity
 		exitX = endpoint.xCoord
 		exitY = endpoint.yCoord
 		exitZ = endpoint.zCoord
-		owner = player.getGameProfile().getId()
-		ownerName = player.getGameProfile().getName()
+		owner = player.getGameProfile.getId
+		ownerName = player.getGameProfile.getName
 		exitDim = endpoint.worldObj.provider.dimensionId
-		exitWorld.reset
+		exitWorld.reset()
 		// NB: assemble isn't used here. Because multiblock should be already constructed by the time TE is initialized
-		markDirty();
-		metadata = getBlockMetadata()
+		markDirty()
+		metadata = getBlockMetadata
 	}
     
 	def teleportEntity(entity: Entity)
 	{
 	    if (worldObj.isRemote || entity == null || entity.timeUntilPortal > 0) // Performed only server-side, when entity has no cooldown on it
 	    	return
-	    checkGatewayValid
+	    checkGatewayValid()
 	    scheduleTeleport(entity)
 	}
 	
@@ -124,7 +123,7 @@ class TileGateway extends TileEntity
 		for (e <- teleportQueue)
 		{
 			val exit = getExitPos(e)
-			val newEntity = EP3Teleporter.apply(e, exit._1, exit._2, exit._3, exitWorld.value.asInstanceOf[WorldServer])
+			val newEntity = EP3Teleporter.apply(e, exit._1, exit._2, exit._3, exitWorld.get)
 			if (newEntity != null)
 				setCooldown(newEntity)
 		}
@@ -136,7 +135,7 @@ class TileGateway extends TileEntity
 		if (worldObj.isRemote)
 			return
 		
-		if (player.getGameProfile().getId() != owner)
+		if (player.getGameProfile.getId != owner)
 		{
 			player.addChatMessage(
 				new ChatComponentText(s"Only the owner of this gateway, $ownerName, can severe it")
@@ -150,7 +149,7 @@ class TileGateway extends TileEntity
 
 		invalidate()
 		player.addChatMessage(
-			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitWorld.value.provider.getDimensionName} was severed")
+			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitWorld.get.provider.getDimensionName} was severed")
 			.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
 		)
 	}
@@ -163,10 +162,10 @@ class TileGateway extends TileEntity
 	}
 	
 	// A more unified way to notify multiblock that it's dead
-	override def invalidate
+	override def invalidate()
 	{
-		super.invalidate
-		dispose
+		super.invalidate()
+		dispose()
 	}
 	
 	// NBT
@@ -180,7 +179,7 @@ class TileGateway extends TileEntity
 		exitY = pos(1)
 		exitZ = pos(2)
 		exitDim = pos(3)
-		exitWorld.reset
+		exitWorld.reset()
 		owner = java.util.UUID.fromString(tag.getString("owner"))
 		ownerName = tag.getString("ownerName")
 		flags = tag.getInteger("flags")
@@ -206,7 +205,7 @@ class TileGateway extends TileEntity
 		// Remove multiblock here
 		GatewayMod.BlockGateway.cores(metadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
-		val exitTE = exitWorld.value.getTileEntity(exitX, exitY, exitZ)
+		val exitTE = exitWorld.get.getTileEntity(exitX, exitY, exitZ)
 		if (exitTE != null && exitTE.isInstanceOf[TileGateway])
 			exitTE.invalidate()
 	}
@@ -215,11 +214,11 @@ class TileGateway extends TileEntity
 		if (entity.ridingEntity != null) getBottomMount(entity.ridingEntity)
 		else entity
 	
-	private def checkGatewayValid // FIXME: do something with this, I suppose?...
+	private def checkGatewayValid() // FIXME: do something with this, I suppose?...
 	{
 		if (owner == null || owner == EmptyOwner)
 			throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
-		if (!exitWorld.value.getTileEntity(exitX, exitY, exitZ).isInstanceOf[TileGateway])
+		if (!exitWorld.get.getTileEntity(exitX, exitY, exitZ).isInstanceOf[TileGateway])
 			throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
 	}
 	
@@ -241,7 +240,9 @@ class TileGateway extends TileEntity
 	 *  through block till it stops touching the one. The move vector is the entity's velocity.
 	 *  If entity's XZ velocity is zero, then the vector from entity center to block center is taken
 	 *  @param entity Entity to move
-	 *  @param block  Block which entity must move through
+	 *  @param blockX X coord of pivot block
+	 *  @param blockY Y coord of pivot block
+	 *  @param blockZ Z coord of pivot block
 	 *  @return       Exit point
 	 */
 	private def getEntityThruBlockExit(entity: Entity, blockX: Int, blockY: Int, blockZ: Int): (Double, Double, Double) =
