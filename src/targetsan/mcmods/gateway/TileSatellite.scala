@@ -3,9 +3,9 @@ package targetsan.mcmods.gateway
 import net.minecraft.tileentity.TileEntity
 import net.minecraftforge.common.util.ForgeDirection
 import scala.reflect.ClassTag
-import scala.util.Try
+import targetsan.mcmods.gateway.connectors._
 
-trait Connector {
+trait ConnectorHost {
 	// Retrieve list of connectable sides
 	// i.e. the sides that are active on this connector
 	def sides: Seq[ForgeDirection]
@@ -13,7 +13,7 @@ trait Connector {
 	// to the specified side
 	def connectedTile(side: ForgeDirection): Option[TileEntity]
 	// Helper func, performs retrieval with type cast
-	def typedTile[T <: TileEntity](side: ForgeDirection)(implicit tag: ClassTag[T]): Option[T] =
+	def typedTile[T](side: ForgeDirection)(implicit tag: ClassTag[T]): Option[T] =
 		for {
 			tile <- connectedTile(side)
 			typed <- tag.unapply(tile)
@@ -39,7 +39,8 @@ object TileSatellite
 		.filter(_ != ForgeDirection.UNKNOWN)
 }
 
-class TileSatellite extends TileEntity with Connector
+class TileSatellite extends TileEntity with ConnectorHost
+	with FluidConnector
 {
 	import TileSatellite._
 	
