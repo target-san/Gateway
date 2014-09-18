@@ -1,10 +1,9 @@
-/.gradle
-/.settings
+/.*
 /bin
 /build
 /run
-/.cache
-/.classpath
-/.project
-/.worksheet
 *.sc
+*.iml
+*.ipr
+*.iws
+
