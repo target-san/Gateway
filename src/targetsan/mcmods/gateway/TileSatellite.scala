@@ -74,7 +74,7 @@ class TileSatellite extends TileEntity with ConnectorHost
 	def connectedTile(side: ForgeDirection) =
 		for {
 			t <- ConnectedSats.get.get(side)
-			tile <- t.getWorldObj.getTileEntity(t.xCoord - side.offsetX, t.yCoord - side.offsetY, t.zCoord - side.offsetZ)
+			tile <- Option(t.getWorldObj.getTileEntity(t.xCoord - side.offsetX, t.yCoord - side.offsetY, t.zCoord - side.offsetZ))
 		}
 			yield tile
 }

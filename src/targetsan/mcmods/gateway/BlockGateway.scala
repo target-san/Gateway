@@ -1,5 +1,6 @@
 package targetsan.mcmods.gateway
-import cpw.mods.fml.common.Mod
+
+import cpw.mods.fml.common.Mod
 import net.minecraft.block.Block
 import net.minecraft.block.BlockContainer
 import net.minecraft.block.material.Material
@@ -20,7 +21,8 @@ class BlockGateway extends BlockContainer(Material.rock)
 	with DropsNothing
 	with Unbreakable 
 	with TeleportActor 
-	with MetaBlock[SubBlock] 	with NotACube
+	with MetaBlock[SubBlock]
+ 	with NotACube
  	with NoCreativePick
 {
 	disableStats()
@@ -46,7 +48,7 @@ class BlockGateway extends BlockContainer(Material.rock)
 	)
 	
 	private def subsOfType[T <: SubBlock](implicit m: Manifest[T]) = 
-		allSubBlocks withFilter { i => m.erasure.isInstance(i._2) } map { i => (i._1, i._2.asInstanceOf[T]) }
+		allSubBlocks withFilter { i => m.runtimeClass.isInstance(i._2) } map { i => (i._1, i._2.asInstanceOf[T]) }
 	
 	def cores      = subsOfType[SubBlockCore]
 	def satellites = subsOfType[SubBlockSatellite]

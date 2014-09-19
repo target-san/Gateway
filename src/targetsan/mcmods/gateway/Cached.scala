@@ -2,7 +2,7 @@ package targetsan.mcmods.gateway
 
 // Used to check if some dependencies of cached value were changed
 trait Versioned {
-	protected def version: Int
+	def version: Int
 }
 
 /** Provides effectively lazy resettable value
@@ -12,7 +12,7 @@ final class Cached[T >: Null](private val init: () => T, deps: Versioned*) exten
 	private var versionNum = 0
 	private var dependencies = deps map { x => (x, x.version) }
 
-	protected def version = versionNum
+	def version = versionNum
 	
 	def get = {
 		// check if any of dependnecies has changed and so update current value accordingly

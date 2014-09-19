@@ -77,6 +77,9 @@ Though playing with gates isn't cost-free, as you will get back only obsidian. I
 ## TODO list
 
 1. Test with non-overworld dimensions - namely End, ExtraUtilities' Deep Dark and Mystcraft ages.
-2. Some kind of locator tool - click on block in any world, then see corresponding search volume in Nether being visualized.
-3. Some method of less lossy gateway shutdown.
-4. Maybe, an OP variant which can be placed anywhere.
+   EDIT: End tested, works nicely.
+2. End: gateway shouldn't be openable until dragin is dead
+3. End, Nether: achievements
+4. Some kind of locator tool - click on block in any world, then see corresponding search volume in Nether being visualized.
+5. Some method of less lossy gateway shutdown.
+6. Maybe, an OP variant which can be placed anywhere.
