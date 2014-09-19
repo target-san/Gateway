@@ -77,7 +77,7 @@ Though playing with gates isn't cost-free, as you will get back only obsidian. I
 ## TODO list
 
 1. Test with non-overworld dimensions - namely End, ExtraUtilities' Deep Dark and Mystcraft ages.
-   EDIT: End tested, works nicely.
+   EDIT: End tested, Deep Dark tested, works nicely.
 2. End: gateway shouldn't be openable until dragin is dead
 3. End, Nether: achievements
 4. Some kind of locator tool - click on block in any world, then see corresponding search volume in Nether being visualized.
