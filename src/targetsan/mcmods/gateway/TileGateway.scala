@@ -9,6 +9,7 @@ import net.minecraft.util.ChatStyle
 import net.minecraft.util.EnumChatFormatting
 
 import Utils._
+import net.minecraft.world.WorldServer
 
 class TileGateway extends TileEntity
 {
@@ -19,11 +20,12 @@ class TileGateway extends TileEntity
 	private var exitCoord: Option[(Int, Int, Int, Int)] = None
 	private val exitTile = new Cached(
 		() => {
+			if (worldObj.isRemote)
+				throw new IllegalStateException("Not on client")
 			val (ex, ey, ez, ew) = exitCoord.get
-			owner match {
-				case null | EmptyOwner =>
-					throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
-			}
+			if (owner == null || owner == EmptyOwner)
+				// FIXME: more graceful shutdown?
+				throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
 			Utils
 				.world(ew)
 				.getTileEntity(ex, ey, ez)
@@ -35,8 +37,8 @@ class TileGateway extends TileEntity
 		}
 	)
 	private var flags = 0
-	
-	/** A set of methods which works with sides markup 
+
+	/** A set of methods which works with sides markup
 	 *  Implements conventional way to remove gateways, which are effectively indestructible
 	 */
 	private val DisposeMarksMask = 0x0F
@@ -87,7 +89,11 @@ class TileGateway extends TileEntity
 		val mask = StateMask << StateOffset
 		flags = (flags & ~mask) | newValue
 	}
-	
+
+	private def isMainState = !worldObj.isRemote && state == Alive
+
+	/** Main initialization section
+	 */
 	def getExitTile = exitTile.get
 
 	def init(endpoint: TileGateway, player: EntityPlayer): Unit =
@@ -109,7 +115,7 @@ class TileGateway extends TileEntity
     
 	def teleportEntity(entity: Entity)
 	{
-	    if (worldObj.isRemote || entity == null || entity.timeUntilPortal > 0) // Performed only server-side, when entity has no cooldown on it
+	    if (!isMainState || entity == null || entity.timeUntilPortal > 0) // Performed only server-side, when entity has no cooldown on it
 	    	return
 	    scheduleTeleport(entity)
 	}
@@ -123,21 +129,26 @@ class TileGateway extends TileEntity
 			teleportQueue :+= mount
 	}
 
-	protected def receiveEntity(entity: Entity, from: TileGateway) = ???
+	protected def receiveEntity(entity: Entity, from: TileGateway) = {
+		val (ex, ey, ez) = getExitPos(entity, from)
+		val newEntity = EP3Teleporter.apply(entity, ex, ey, ez, worldObj.as[WorldServer].get)
+		setCooldown(newEntity)
+	}
 	
 	override def updateEntity(): Unit =
 	{
-		if (worldObj.isRemote)
+		super.updateEntity()
+		if (!isMainState)
 			return
 			
 		for (e <- teleportQueue)
-			receiveEntity(e, exitTile.get)
+			getExitTile.receiveEntity(e, this)
 		teleportQueue = Nil
 	}
 	
 	def markForDispose(player: EntityPlayer, side: Int)
 	{
-		if (worldObj.isRemote)
+		if (!isMainState)
 			return
 		
 		if (player.getGameProfile.getId != owner)
@@ -161,23 +172,24 @@ class TileGateway extends TileEntity
 	
 	def unmarkForDispose(side: Int)
 	{
-		if (worldObj.isRemote)
-			return
-		markSideDisposed(side, false)
+		if (isMainState)
+			markSideDisposed(side, false)
 	}
 	
 	// A more unified way to notify multiblock that it's dead
 	override def invalidate()
 	{
 		super.invalidate()
-		dispose()
+		if (isMainState)
+			dispose()
 	}
 
 	// Notify partner core that this one is unloaded
 	override def onChunkUnload(): Unit =
 	{
 		super.onChunkUnload()
-		exitTile.get.exitTile.reset()
+		if (isMainState)
+			exitTile.get.exitTile.reset()
 	}
 	
 	// NBT
@@ -208,9 +220,6 @@ class TileGateway extends TileEntity
 	
 	private def dispose()
 	{
-		if (worldObj.isRemote || state != Alive)
-			return
-		
 		state = Disposing
 		// Remove multiblock here
 		GatewayMod.BlockGateway.cores(metadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
@@ -232,10 +241,10 @@ class TileGateway extends TileEntity
 			setCooldown(entity.riddenByEntity)
 	}
 	
-	private def getExitPos(entity: Entity) = translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord))
-	// Transposes specified set of coordinates along vector specified by this TE's coords and exit block's coords
-	private def translateCoordEnterToExit(coord: (Double, Double, Double)): (Double, Double, Double) =
-		(coord._1 + exitTile.get.xCoord - xCoord, coord._2 + exitTile.get.yCoord - yCoord, coord._3 + exitTile.get.zCoord - zCoord)
+	private def getExitPos(entity: Entity, from: TileEntity) = translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord), from)
+	// Transposes specified set of coordinates along vector specified by this and source TEs' coords
+	private def translateCoordEnterToExit(coord: (Double, Double, Double), from: TileEntity): (Double, Double, Double) =
+		(coord._1 + xCoord - from.xCoord, coord._2 + yCoord - from.yCoord, coord._3 + zCoord - from.zCoord)
 	/** This function is used to calculate entity's position after moving through a block
 	 *  Entity is considered to touch block at the start of move, and it's really necessary
 	 *  for the computation to be correct. The move itself is like entity has moved in XZ plane
