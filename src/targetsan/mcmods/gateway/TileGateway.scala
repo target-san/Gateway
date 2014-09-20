@@ -11,8 +11,7 @@ import net.minecraft.util.EnumChatFormatting
 import Utils._
 import net.minecraft.world.WorldServer
 
-class TileGateway extends TileEntity
-{
+class TileGateway extends TileEntity {
 	private val EmptyOwner = new java.util.UUID(0L, 0L)
 
 	private var owner = EmptyOwner
@@ -24,7 +23,7 @@ class TileGateway extends TileEntity
 				throw new IllegalStateException("Not on client")
 			val (ex, ey, ez, ew) = exitCoord.get
 			if (owner == null || owner == EmptyOwner)
-				// FIXME: more graceful shutdown?
+			// FIXME: more graceful shutdown?
 				throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
 			Utils
 				.world(ew)
@@ -32,59 +31,59 @@ class TileGateway extends TileEntity
 				.as[TileGateway]
 				// FIXME: place more player-friendly fallback here. Might be some kind of violent explosion?
 				.getOrElse {
-					throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
-				}
+				throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
+			}
 		}
 	)
 	private var flags = 0
 
 	/** A set of methods which works with sides markup
-	 *  Implements conventional way to remove gateways, which are effectively indestructible
-	 */
+	  * Implements conventional way to remove gateways, which are effectively indestructible
+	  */
 	private val DisposeMarksMask = 0x0F
 
-	private def sideToFlag(side: Int): Int = 
-	{
-		if (! (0 to 3 contains side))
+	private def sideToFlag(side: Int): Int = {
+		if (!(0 to 3 contains side))
 			throw new IllegalArgumentException(s"Disposal marks: side index $side is not in range [0..3]")
 		1 << side
 	}
-	
+
 	private def markSideDisposed(side: Int, mark: Boolean) =
 		if (mark) flags |= sideToFlag(side)
 		else flags &= ~sideToFlag(side)
-		
+
 	private def areAllSidesMarked = (flags & DisposeMarksMask) == DisposeMarksMask
-	
+
 	/** Accessor funcs which get/set stored block metadata.
-	 *  This is due to block's meta might be cleaned when TE is invalidated by block removal. I'm not sure.
-	 *  Might be dropped in future
-	 */
+	  * This is due to block's meta might be cleaned when TE is invalidated by block removal. I'm not sure.
+	  * Might be dropped in future
+	  */
 	private val MetaMask = 0x0F
 	private val MetaOffset = 4
-	
-	private def metadata               = (flags >> MetaOffset) & MetaMask
-	private def metadata_=(value: Int) =
-	{
+
+	private def metadata = (flags >> MetaOffset) & MetaMask
+
+	private def metadata_=(value: Int) = {
 		val newValue = (value & MetaMask) << MetaOffset
 		val mask = MetaMask << MetaOffset
 		flags = (flags & ~mask) | newValue
 	}
+
 	/** Flag accessors for controlling multiblock's state. Would possibly prevent some strange things. I'm not sure.
-	 */
-	private object State extends Enumeration
-	{
+	  */
+	private object State extends Enumeration {
 		type State = Value
 		val PreInit, Alive, Disposing = Value
 	}
+
 	import State._
-	
+
 	private val StateMask = 0x03
 	private val StateOffset = 8
 
-	private def state: State          = State((flags >> StateOffset) & StateMask)
-	private def state_=(value: State) =
-	{
+	private def state: State = State((flags >> StateOffset) & StateMask)
+
+	private def state_=(value: State) = {
 		val newValue = (value.id & StateMask) << StateOffset
 		val mask = StateMask << StateOffset
 		flags = (flags & ~mask) | newValue
@@ -93,18 +92,17 @@ class TileGateway extends TileEntity
 	private def isMainState = !worldObj.isRemote && state == Alive
 
 	/** Main initialization section
-	 */
+	  */
 	def getExitTile = exitTile.get
 
-	def init(endpoint: TileGateway, player: EntityPlayer): Unit =
-	{
+	def init(endpoint: TileGateway, player: EntityPlayer): Unit = {
 		if (worldObj.isRemote)
 			return
 		if (state != PreInit) // owner and other params are set only once
 			throw new IllegalStateException("Gateway parameters are set only once")
 
 		state = Alive
-		exitCoord = Some( (endpoint.xCoord, endpoint.yCoord, endpoint.zCoord, endpoint.worldObj.provider.dimensionId) )
+		exitCoord = Some((endpoint.xCoord, endpoint.yCoord, endpoint.zCoord, endpoint.worldObj.provider.dimensionId))
 		owner = player.getGameProfile.getId
 		ownerName = player.getGameProfile.getName
 		exitTile.reset()
@@ -112,50 +110,45 @@ class TileGateway extends TileEntity
 		markDirty()
 		metadata = getBlockMetadata
 	}
-    
-	def teleportEntity(entity: Entity)
-	{
-	    if (!isMainState || entity == null || entity.timeUntilPortal > 0) // Performed only server-side, when entity has no cooldown on it
-	    	return
-	    scheduleTeleport(entity)
+
+	def teleportEntity(entity: Entity) {
+		if (!isMainState || entity == null || entity.timeUntilPortal > 0) // Performed only server-side, when entity has no cooldown on it
+			return
+		scheduleTeleport(entity)
 	}
-	
+
 	private var teleportQueue: List[Entity] = Nil
-	
-	private def scheduleTeleport(entity: Entity) =
-	{
+
+	private def scheduleTeleport(entity: Entity) = {
 		val mount = getBottomMount(entity)
 		if (!(teleportQueue contains mount))
 			teleportQueue :+= mount
 	}
 
 	protected def receiveEntity(entity: Entity, from: TileGateway) = {
-		val (ex, ey, ez) = getExitPos(entity, from)
+		val (ex, ey, ez) = getExitPos(entity, from, this)
 		val newEntity = EP3Teleporter.apply(entity, ex, ey, ez, worldObj.as[WorldServer].get)
 		setCooldown(newEntity)
 	}
-	
-	override def updateEntity(): Unit =
-	{
+
+	override def updateEntity(): Unit = {
 		super.updateEntity()
 		if (!isMainState)
 			return
-			
+
 		for (e <- teleportQueue)
 			getExitTile.receiveEntity(e, this)
 		teleportQueue = Nil
 	}
-	
-	def markForDispose(player: EntityPlayer, side: Int)
-	{
+
+	def markForDispose(player: EntityPlayer, side: Int) {
 		if (!isMainState)
 			return
-		
-		if (player.getGameProfile.getId != owner)
-		{
+
+		if (player.getGameProfile.getId != owner) {
 			player.addChatMessage(
 				new ChatComponentText(s"Only the owner of this gateway, $ownerName, can severe it")
-				.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
+					.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
 			)
 			return
 		}
@@ -166,48 +159,43 @@ class TileGateway extends TileEntity
 		invalidate()
 		player.addChatMessage(
 			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitTile.get.getWorldObj.provider.getDimensionName} was severed")
-			.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
+				.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
 		)
 	}
-	
-	def unmarkForDispose(side: Int)
-	{
+
+	def unmarkForDispose(side: Int) {
 		if (isMainState)
 			markSideDisposed(side, false)
 	}
-	
+
 	// A more unified way to notify multiblock that it's dead
-	override def invalidate()
-	{
+	override def invalidate() {
 		super.invalidate()
 		if (isMainState)
 			dispose()
 	}
 
 	// Notify partner core that this one is unloaded
-	override def onChunkUnload(): Unit =
-	{
+	override def onChunkUnload(): Unit = {
 		super.onChunkUnload()
 		if (isMainState)
 			exitTile.get.exitTile.reset()
 	}
-	
+
 	// NBT
-	override def readFromNBT(tag: NBTTagCompound)
-	{
+	override def readFromNBT(tag: NBTTagCompound) {
 		if (tag == null)
 			return
 		super.readFromNBT(tag)
 		val pos = tag.getIntArray("exitPos")
-		exitCoord = Some( (pos(0), pos(1), pos(2), pos(3)) )
+		exitCoord = Some((pos(0), pos(1), pos(2), pos(3)))
 		exitTile.reset()
 		owner = java.util.UUID.fromString(tag.getString("owner"))
 		ownerName = tag.getString("ownerName")
 		flags = tag.getInteger("flags")
 	}
-	
-	override def writeToNBT(tag: NBTTagCompound)
-	{
+
+	override def writeToNBT(tag: NBTTagCompound) {
 		if (tag == null)
 			return
 		super.writeToNBT(tag)
@@ -217,22 +205,20 @@ class TileGateway extends TileEntity
 		tag.setString("ownerName", ownerName)
 		tag.setInteger("flags", flags)
 	}
-	
-	private def dispose()
-	{
+
+	private def dispose() {
 		state = Disposing
 		// Remove multiblock here
 		GatewayMod.BlockGateway.cores(metadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
 		exitTile.get.invalidate()
 	}
-	
-	private def getBottomMount(entity: Entity): Entity = 
+
+	private def getBottomMount(entity: Entity): Entity =
 		if (entity.ridingEntity != null) getBottomMount(entity.ridingEntity)
 		else entity
-	
-	private def setCooldown(entity: Entity): Unit =
-	{
+
+	private def setCooldown(entity: Entity): Unit = {
 		if (entity == null)
 			return
 		if (entity.timeUntilPortal < Utils.DefaultCooldown)
@@ -240,11 +226,11 @@ class TileGateway extends TileEntity
 		if (entity.riddenByEntity != null)
 			setCooldown(entity.riddenByEntity)
 	}
-	
-	private def getExitPos(entity: Entity, from: TileEntity) = translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord), from)
+
+	def getExitPos(entity: Entity, from: TileEntity, to: TileEntity) = translateCoordEnterToExit(getEntityThruBlockExit(entity, from.xCoord, from.yCoord, from.zCoord), from, to)
 	// Transposes specified set of coordinates along vector specified by this and source TEs' coords
-	private def translateCoordEnterToExit(coord: (Double, Double, Double), from: TileEntity): (Double, Double, Double) =
-		(coord._1 + xCoord - from.xCoord, coord._2 + yCoord - from.yCoord, coord._3 + zCoord - from.zCoord)
+	private def translateCoordEnterToExit(coord: (Double, Double, Double), from: TileEntity, to: TileEntity): (Double, Double, Double) =
+		(coord._1 + to.xCoord - from.xCoord, coord._2 + to.yCoord - from.yCoord, coord._3 + to.zCoord - from.zCoord)
 	/** This function is used to calculate entity's position after moving through a block
 	 *  Entity is considered to touch block at the start of move, and it's really necessary
 	 *  for the computation to be correct. The move itself is like entity has moved in XZ plane
