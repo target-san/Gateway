@@ -33,6 +33,16 @@ The other important property is velocity being kept and exit location being comp
 
 So let's get to the business.
 
+## Where to start
+
+Gateways can be essentially created in any non-Nether dimension. This includes End, Deep Dark, Mystcraft ages.
+And they always lead to Nether. So be prepared to construct some pathways and protect them from ghasts, zombie pigmen and other nasty dwellers.
+As it was stated above, this shortens distance around 8 times. As such, gateways become a not-so OP transport and travelling system.
+
+NB: I didn't have opportunity to test gateways with Mystcraft ages - because there's no public Mystcraft for 1.7.10 on 2014-09-20.
+Though there's no logic which checks explicitly for some specific dimension - except Nether, of course.
+Also, gateways were tested with End and Deep Dark. Everything should work fine.
+
 ## Your first gateway
 
 You'll need only vanilla blocks - 4 obsidian, 4 glass and 1 redstone block.
@@ -51,8 +61,12 @@ The last step is to use flint'n'steel on redstone block - this will construct ga
 Going through gateway will bring you to Nether, like with vanilla.
 Some explanation about how the proper location for gateway is searched:
 
-1. The center of search zone is calculated by taking XZ of the source block (the one where redstone resided), then translating it to nether coordinates by dividing by 8 - this is movement factor between overworld and nether. Y coordinate is just Nether's height divided by two - 63.
-2. The search zone is from one fourth to three fourths of Nether height. XZ square zone has 'linear' radius of 5. Also, each gateway creates a vertical 'dead zone' with radius 8, where no other gateway can open. This means that both X and Z between adjacent gateway core blocks (the ones righ below pillar, where redstone resided) should differ by at least 8.
+1. The center of search zone is calculated by taking XZ of the source block (the one where redstone resided), then translating it to nether coordinates by dividing by 8 - this is movement factor between overworld and nether.
+   Y coordinate is just Nether's height divided by two - 63.
+2. The search zone is from one fourth to three fourths of Nether height. XZ square zone has 'linear' radius of 5.
+   Also, each gateway creates a vertical 'dead zone' with radius 8, where no other gateway can open.
+   This means that both X and Z between adjacent gateway core blocks (the ones righ below pillar, where redstone resided) should differ by at least 8.
+   This dead zone is for *any* source dimension. It doesn't matter where gateway leads from. So be careful when connecting several dimensions.
 3. Next, all positions in dead zone are evaluated for their 'weight'. The less weight, the better position. Weight is influenced by:
     * non-air blocks above future platform in 3x3x3 volume, where any non-air block adds to weight
     * non-solid blocks in 5x1x5 volume centered around future core, where each non-solid block adds to weight
@@ -76,10 +90,9 @@ Though playing with gates isn't cost-free, as you will get back only obsidian. I
 
 ## TODO list
 
-1. Test with non-overworld dimensions - namely End, ExtraUtilities' Deep Dark and Mystcraft ages.
-   EDIT: End tested, Deep Dark tested, works nicely.
-2. End: gateway shouldn't be openable until dragin is dead
-3. End, Nether: achievements
-4. Some kind of locator tool - click on block in any world, then see corresponding search volume in Nether being visualized.
-5. Some method of less lossy gateway shutdown.
+1. End: gateway shouldn't be openable until dragin is dead
+2. End, Nether: achievements
+3. Some kind of locator tool - click on block in any world, then see corresponding search volume in Nether being visualized.
+4. Some method of less lossy gateway shutdown.
+5. Biometric control - check who can pass and who can't. Want to use existing biometrics API.
 6. Maybe, an OP variant which can be placed anywhere.
