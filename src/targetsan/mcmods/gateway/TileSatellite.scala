@@ -50,12 +50,11 @@ class TileSatellite extends TileEntity with ConnectorHost
 	private val ConnectedSats = new Cached( () =>
 		{
 			val core = worldObj.getTileEntity(xCoord - SatBlock.xOffset, yCoord, zCoord - SatBlock.zOffset).asInstanceOf[TileGateway]
-			val endPoint = core.getEndPoint
-			val endWorld = core.getEndWorld
-			
+			val endTile = core.getExitTile
+
 			def otherSat(dx: Int, dz: Int) = 
-				endWorld
-				.getTileEntity(endPoint.posX + dx, endPoint.posY, endPoint.posZ + dz)
+				endTile.getWorldObj
+				.getTileEntity(endTile.xCoord + dx, endTile.yCoord, endTile.zCoord + dz)
 				.asInstanceOf[TileSatellite]
 
 			ConnectedSides.map( s => (s, otherSat(-s.offsetX, -s.offsetZ) ) ).toMap

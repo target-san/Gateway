@@ -6,21 +6,34 @@ import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.util.ChatComponentText
 import net.minecraft.util.ChatStyle
-import net.minecraft.util.ChunkCoordinates
 import net.minecraft.util.EnumChatFormatting
-import net.minecraft.world.WorldServer
+
+import Utils._
 
 class TileGateway extends TileEntity
 {
 	private val EmptyOwner = new java.util.UUID(0L, 0L)
-	
-	private var exitX = 0
-	private var exitY = 0
-	private var exitZ = 0
-	private var exitDim: Int = 0
-	private val exitWorld = new Cached( () => Utils.world(exitDim) )
+
 	private var owner = EmptyOwner
 	private var ownerName = ""
+	private var exitCoord: Option[(Int, Int, Int, Int)] = None
+	private val exitTile = new Cached(
+		() => {
+			val (ex, ey, ez, ew) = exitCoord.get
+			owner match {
+				case null | EmptyOwner =>
+					throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
+			}
+			Utils
+				.world(ew)
+				.getTileEntity(ex, ey, ez)
+				.as[TileGateway]
+				// FIXME: place more player-friendly fallback here. Might be some kind of violent explosion?
+				.getOrElse {
+					throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
+				}
+		}
+	)
 	private var flags = 0
 	
 	/** A set of methods which works with sides markup 
@@ -75,9 +88,8 @@ class TileGateway extends TileEntity
 		flags = (flags & ~mask) | newValue
 	}
 	
-	def getEndPoint = new ChunkCoordinates(exitX, exitY, exitZ)
-	def getEndWorld = exitWorld.get
-	
+	def getExitTile = exitTile.get
+
 	def init(endpoint: TileGateway, player: EntityPlayer): Unit =
 	{
 		if (worldObj.isRemote)
@@ -86,13 +98,10 @@ class TileGateway extends TileEntity
 			throw new IllegalStateException("Gateway parameters are set only once")
 
 		state = Alive
-		exitX = endpoint.xCoord
-		exitY = endpoint.yCoord
-		exitZ = endpoint.zCoord
+		exitCoord = Some( (endpoint.xCoord, endpoint.yCoord, endpoint.zCoord, endpoint.worldObj.provider.dimensionId) )
 		owner = player.getGameProfile.getId
 		ownerName = player.getGameProfile.getName
-		exitDim = endpoint.worldObj.provider.dimensionId
-		exitWorld.reset()
+		exitTile.reset()
 		// NB: assemble isn't used here. Because multiblock should be already constructed by the time TE is initialized
 		markDirty()
 		metadata = getBlockMetadata
@@ -102,7 +111,6 @@ class TileGateway extends TileEntity
 	{
 	    if (worldObj.isRemote || entity == null || entity.timeUntilPortal > 0) // Performed only server-side, when entity has no cooldown on it
 	    	return
-	    checkGatewayValid()
 	    scheduleTeleport(entity)
 	}
 	
@@ -114,6 +122,8 @@ class TileGateway extends TileEntity
 		if (!(teleportQueue contains mount))
 			teleportQueue :+= mount
 	}
+
+	protected def receiveEntity(entity: Entity, from: TileGateway) = ???
 	
 	override def updateEntity(): Unit =
 	{
@@ -121,12 +131,7 @@ class TileGateway extends TileEntity
 			return
 			
 		for (e <- teleportQueue)
-		{
-			val exit = getExitPos(e)
-			val newEntity = EP3Teleporter.apply(e, exit._1, exit._2, exit._3, exitWorld.get)
-			if (newEntity != null)
-				setCooldown(newEntity)
-		}
+			receiveEntity(e, exitTile.get)
 		teleportQueue = Nil
 	}
 	
@@ -149,7 +154,7 @@ class TileGateway extends TileEntity
 
 		invalidate()
 		player.addChatMessage(
-			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitWorld.get.provider.getDimensionName} was severed")
+			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitTile.get.getWorldObj.provider.getDimensionName} was severed")
 			.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
 		)
 	}
@@ -167,6 +172,13 @@ class TileGateway extends TileEntity
 		super.invalidate()
 		dispose()
 	}
+
+	// Notify partner core that this one is unloaded
+	override def onChunkUnload(): Unit =
+	{
+		super.onChunkUnload()
+		exitTile.get.exitTile.reset()
+	}
 	
 	// NBT
 	override def readFromNBT(tag: NBTTagCompound)
@@ -175,11 +187,8 @@ class TileGateway extends TileEntity
 			return
 		super.readFromNBT(tag)
 		val pos = tag.getIntArray("exitPos")
-		exitX = pos(0)
-		exitY = pos(1)
-		exitZ = pos(2)
-		exitDim = pos(3)
-		exitWorld.reset()
+		exitCoord = Some( (pos(0), pos(1), pos(2), pos(3)) )
+		exitTile.reset()
 		owner = java.util.UUID.fromString(tag.getString("owner"))
 		ownerName = tag.getString("ownerName")
 		flags = tag.getInteger("flags")
@@ -190,7 +199,8 @@ class TileGateway extends TileEntity
 		if (tag == null)
 			return
 		super.writeToNBT(tag)
-		tag.setIntArray("exitPos", Array(exitX, exitY, exitZ, exitDim))
+		val (ex, ey, ez, ew) = exitCoord.get
+		tag.setIntArray("exitPos", Array(ex, ey, ez, ew))
 		tag.setString("owner", owner.toString)
 		tag.setString("ownerName", ownerName)
 		tag.setInteger("flags", flags)
@@ -205,35 +215,27 @@ class TileGateway extends TileEntity
 		// Remove multiblock here
 		GatewayMod.BlockGateway.cores(metadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
-		val exitTE = exitWorld.get.getTileEntity(exitX, exitY, exitZ)
-		if (exitTE != null && exitTE.isInstanceOf[TileGateway])
-			exitTE.invalidate()
+		exitTile.get.invalidate()
 	}
 	
 	private def getBottomMount(entity: Entity): Entity = 
 		if (entity.ridingEntity != null) getBottomMount(entity.ridingEntity)
 		else entity
 	
-	private def checkGatewayValid() // FIXME: do something with this, I suppose?...
-	{
-		if (owner == null || owner == EmptyOwner)
-			throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
-		if (!exitWorld.get.getTileEntity(exitX, exitY, exitZ).isInstanceOf[TileGateway])
-			throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
-	}
-	
 	private def setCooldown(entity: Entity): Unit =
 	{
-		if (entity.riddenByEntity != null)
-			setCooldown(entity.riddenByEntity)
+		if (entity == null)
+			return
 		if (entity.timeUntilPortal < Utils.DefaultCooldown)
 			entity.timeUntilPortal = Utils.DefaultCooldown
+		if (entity.riddenByEntity != null)
+			setCooldown(entity.riddenByEntity)
 	}
 	
 	private def getExitPos(entity: Entity) = translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord))
 	// Transposes specified set of coordinates along vector specified by this TE's coords and exit block's coords
 	private def translateCoordEnterToExit(coord: (Double, Double, Double)): (Double, Double, Double) =
-		(coord._1 + exitX - xCoord, coord._2 + exitY - yCoord, coord._3 + exitZ - zCoord)
+		(coord._1 + exitTile.get.xCoord - xCoord, coord._2 + exitTile.get.yCoord - yCoord, coord._3 + exitTile.get.zCoord - zCoord)
 	/** This function is used to calculate entity's position after moving through a block
 	 *  Entity is considered to touch block at the start of move, and it's really necessary
 	 *  for the computation to be correct. The move itself is like entity has moved in XZ plane
