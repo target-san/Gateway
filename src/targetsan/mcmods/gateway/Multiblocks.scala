@@ -48,9 +48,13 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		val to = Utils.interDimension
 		if (!isMultiblockPresent(world, x, y, z))
 			return Success(false)
-			
-		if (world.provider.dimensionId == to.provider.dimensionId)
-			return Failure(new Exception(s"Redstone isn't powerful enough to open gateway from ${to.provider.getDimensionName()}. Try something different."))
+
+		world.provider.dimensionId match {
+			case Utils.InterDimensionId => // Cannot be opened from Nether. At least not this type.
+				return Failure(new Exception(s"Redstone isn't powerful enough to open gateway from ${to.provider.getDimensionName}. Try something different."))
+			case Utils.EndDimensionId => // Prevent opening from End if dragon is still alive; stub here
+			case _ => ()
+		}
 
 		findExit(world, x, y, z) match
 		{
@@ -88,7 +92,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	
 	private def translatePoint(from: World, x: Int, y: Int, z: Int, to: World): (Int, Int, Int) =
 	{
-		def mapCoord(c: Int) = Math.floor(c * from.provider.getMovementFactor() / to.provider.getMovementFactor()).toInt
+		def mapCoord(c: Int) = Math.floor(c * from.provider.getMovementFactor / to.provider.getMovementFactor).toInt
 		(mapCoord(x), (to.provider.getActualHeight - 1) / 2, mapCoord(z))
 	}
 	
@@ -112,7 +116,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		val (cx, cy, cz) = translatePoint(from, x0, y0, z0, to)
 		
 		val volume = scanVolume(to, cx, cy, cz)
-		val LookupH = to.provider.getActualHeight() / HeightFractions
+		val LookupH = to.provider.getActualHeight / HeightFractions
 		
 		def sqr(x: Int) = x * x
 		
@@ -162,7 +166,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 	
 	private def scanVolume(w: World, cx: Int, cy: Int, cz: Int): VolumeFunc =
 	{
-		val LookupH = w.provider.getActualHeight() / HeightFractions
+		val LookupH = w.provider.getActualHeight / HeightFractions
 
 		val lookupX = cx - EffLookupR to cx + EffLookupR
 		val lookupY = cy - LookupH to cy + LookupH
@@ -200,7 +204,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 				) = t
 		// Perform full zone scan
 		val FullR = EffLookupR + EffDeadR
-		for ( (x, y, z) <- Utils.enumVolume(cx - FullR, 1, cz - FullR, cx + FullR, w.provider.getActualHeight() - 1, cz + FullR))
+		for ( (x, y, z) <- Utils.enumVolume(cx - FullR, 1, cz - FullR, cx + FullR, w.provider.getActualHeight - 1, cz + FullR))
 		{
 			val entity = w.getTileEntity(x, y, z)
 			// Mark all columns in other GW's 'dead zone' as 'dead'
@@ -216,7 +220,7 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 						else if (b == Blocks.redstone_block) BlockType.Anchor
 						else if (b.isAir(w, x, y, z)) BlockType.Air
 						else if (b.isInstanceOf[BlockLiquid]) BlockType.Liquid 
-						else if (b.isBlockNormalCube()) BlockType.Solid
+						else if (b.isBlockNormalCube) BlockType.Solid
 						else BlockType.Complex
 					}
 				)

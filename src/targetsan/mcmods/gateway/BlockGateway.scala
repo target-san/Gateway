@@ -5,17 +5,18 @@ import net.minecraft.block.Block
 import net.minecraft.block.BlockContainer
 import net.minecraft.block.material.Material
 import net.minecraft.client.renderer.texture.IIconRegister
-import net.minecraft.entity.Entity
+import net.minecraft.entity.{EnumCreatureType, Entity}
 import net.minecraft.init.{Blocks, Items}
 import net.minecraft.world.World
 import net.minecraft.util.IIcon
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.world.IBlockAccess
-import net.minecraft.util.Facing
 import net.minecraftforge.common.util.ForgeDirection
 import net.minecraft.util.MovingObjectPosition
 import net.minecraft.util.Vec3
 import net.minecraft.util.AxisAlignedBB
+
+import Utils._
 
 class BlockGateway extends BlockContainer(Material.rock)
 	with DropsNothing
@@ -115,6 +116,10 @@ class BlockGateway extends BlockContainer(Material.rock)
 
 	override def registerBlockIcons(register: IIconRegister) =
 		allSubBlocks foreach { _._2.registerBlockIcons(register) }
+	// Cannot be destroyed by enderdragons, withers and other mobs
+	override def canEntityDestroy(world: IBlockAccess, x: Int, y: Int, z: Int, entity: Entity) = false
+	// Nothing spawns here
+	override def canCreatureSpawn(creature: EnumCreatureType, world: IBlockAccess, x: Int, y: Int, z: Int) = false
 }
 
 class SubBlockCore(val multiblock: Multiblock) extends SubBlock(Material.rock)
@@ -260,8 +265,7 @@ class SubBlockPillar extends SubBlock(Material.air)
 	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) =
 	{
 		val below = world.getBlock(x, y - 1, z)
-		if (below.isInstanceOf[TeleportActor])
-			below.asInstanceOf[TeleportActor].teleportEntity(world, x, y - 1, z, entity)
+		below.as[TeleportActor] foreach { _.teleportEntity(world, x, y - 1, z, entity) }
 	}
 	
 	override def shouldSideBeRendered(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int): Boolean =

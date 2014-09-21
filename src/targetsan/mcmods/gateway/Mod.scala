@@ -7,7 +7,9 @@ import net.minecraftforge.common.MinecraftForge
 import cpw.mods.fml.common.registry.GameRegistry
 import net.minecraft.server.MinecraftServer
 import net.minecraft.util.IIcon
+import net.minecraft.entity.Entity
 
+import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
 @Mod(modid = "gateway", useMetadata = true, modLanguage = "scala")
@@ -32,16 +34,36 @@ object GatewayMod {
 
 object Utils
 {
+	val NetherDimensionId = -1
+	val EndDimensionId = 1
+
 	val DefaultCooldown = 80
 	
-	val InterDimensionId = -1 // Nether
+	val InterDimensionId = NetherDimensionId
 	def interDimension = Utils.world(InterDimensionId)
 	
 	def world(dim: Int) = MinecraftServer.getServer.worldServerForDimension(dim)
 	
 	def enumVolume(x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =
 		for (x <- x1 to x2; y <- y1 to y2; z <- z1 to z2) yield (x, y, z)
-		
+
+	def bottomMount(entity: Entity): Entity =
+		if (entity == null) null
+		else if (entity.ridingEntity != null) bottomMount(entity.ridingEntity)
+		else entity
+
+	def enumRiders(entity: Entity): Seq[Entity] =
+	{
+		var iter = bottomMount(entity)
+		val builder = ListBuffer[Entity]()
+		while (iter != null)
+		{
+			builder += iter
+			iter = iter.riddenByEntity
+		}
+		builder.result()
+	}
+
 	implicit class IconTransformOps(icon: IIcon) extends AnyRef
 	{
 		def flippedU: IIcon = new IconTransformer(icon, true, false)

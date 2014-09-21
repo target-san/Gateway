@@ -3,6 +3,7 @@ package targetsan.mcmods.gateway
 import net.minecraft.entity.Entity
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.nbt.NBTTagCompound
+import net.minecraft.stats.AchievementList
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.util.ChatComponentText
 import net.minecraft.util.ChatStyle
@@ -34,10 +35,6 @@ class TileGateway extends TileEntity {
 				.world(ew)
 				.getTileEntity(ex, ey, ez)
 				.as[TileGateway]
-				// FIXME: place more player-friendly fallback here. Might be some kind of violent explosion?
-				.getOrElse {
-				throw new IllegalStateException("Gateway not constructed properly: there's no gateway exit on the other side")
-			}
 		}
 	)
 	private var flags = 0
@@ -119,14 +116,14 @@ class TileGateway extends TileEntity {
 		// Remove multiblock here
 		GatewayMod.BlockGateway.cores(metadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
-		exitTile.get.invalidate()
+		exitTile.get foreach { _.invalidate() }
 	}
 
 	// Notify partner core that this one is unloaded
 	override def onChunkUnload(): Unit = {
 		super.onChunkUnload()
 		if (isMainState)
-			exitTile.get.exitTile.reset()
+			exitTile.get foreach { _.exitTile.reset() }
 	}
 
 	// NBT
@@ -165,12 +162,12 @@ class TileGateway extends TileEntity {
 		if (!isMainState || entity == null || entity.timeUntilPortal > 0) // Performed only server-side, when entity has no cooldown on it
 			return
 		// Defer teleport till tile entity update
-		val mount = getBottomMount(entity)
+		val mount = Utils.bottomMount(entity)
 		if (!(teleportQueue contains mount))
 			teleportQueue :+= mount
 	}
 
-	def getExitTile = exitTile.get
+	def getExitTile = exitTile.get getOrElse { throw new IllegalStateException("No gateway detected on the other side") }
 
 	def init(endpoint: TileGateway, player: EntityPlayer): Unit = {
 		if (worldObj.isRemote)
@@ -205,7 +202,7 @@ class TileGateway extends TileEntity {
 
 		invalidate()
 		player.addChatMessage(
-			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitTile.get.getWorldObj.provider.getDimensionName} was severed")
+			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${getExitTile.getWorldObj.provider.getDimensionName} was severed")
 				.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
 		)
 	}
@@ -232,21 +229,25 @@ class TileGateway extends TileEntity {
 		if (newEntity == null)
 			return
 		setCooldown(newEntity)
-		toggleAchievements(newEntity)
+		toggleAchievements(newEntity, from)
 	}
 
-	private def getBottomMount(entity: Entity): Entity =
-		if (entity.ridingEntity != null) getBottomMount(entity.ridingEntity)
-		else entity
+	private def setCooldown(entity: Entity): Unit =
+		for (e <- Utils.enumRiders(entity))
+			if (e.timeUntilPortal < Utils.DefaultCooldown)
+				e.timeUntilPortal = Utils.DefaultCooldown
 
-	private def setCooldown(entity: Entity): Unit = {
-		if (entity.timeUntilPortal < Utils.DefaultCooldown)
-			entity.timeUntilPortal = Utils.DefaultCooldown
-		if (entity.riddenByEntity != null)
-			setCooldown(entity.riddenByEntity)
-	}
-
-	private def toggleAchievements(entity: Entity): Unit = { }
+	private def toggleAchievements(entity: Entity, from: TileEntity) =
+		for {
+			e <- Utils.enumRiders(entity).map { _.as[EntityPlayer] }
+			ep <- e
+		}
+			if (worldObj.provider.dimensionId == Utils.NetherDimensionId)
+				ep.triggerAchievement(AchievementList.portal)
+			else if (worldObj.provider.dimensionId == Utils.EndDimensionId)
+				ep.triggerAchievement(AchievementList.theEnd)
+			else if (from.getWorldObj.provider.dimensionId == Utils.EndDimensionId)
+				ep.triggerAchievement(AchievementList.theEnd2)
 
 	/*******************************************************************************************************************
 	 * Teleporting: computes destination coordinates for the entity, based on enter and exit tiles
