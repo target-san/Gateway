@@ -3,12 +3,13 @@ package targetsan.mcmods.gateway
 import net.minecraft.entity.Entity
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.nbt.NBTTagCompound
-import net.minecraft.stats.AchievementList
 import net.minecraft.tileentity.TileEntity
-import net.minecraft.util.{ChunkCoordinates, ChatComponentText, ChatStyle, EnumChatFormatting}
+import net.minecraft.util._
+import net.minecraft.world.WorldServer
 
 import Utils._
-import net.minecraft.world.WorldServer
+import gateway.api._
+import net.minecraftforge.common.MinecraftForge
 
 class TileGateway extends TileEntity {
 	private val EmptyOwner = new java.util.UUID(0L, 0L)
@@ -86,6 +87,8 @@ class TileGateway extends TileEntity {
 		if (!isMainState)
 			return
 
+		if (teleportQueue.nonEmpty) // check only if we're gonna teleport something
+			checkConnectionValid()
 		for (e <- teleportQueue)
 			teleport(e)
 		teleportQueue = Nil
@@ -203,12 +206,41 @@ class TileGateway extends TileEntity {
 	 *
 	 * @param entity The one being teleported
 	 */
-	protected def teleport(entity: Entity): Unit = {
+	private def teleport(entity: Entity): Unit = {
 		val (ex, ey, ez) = getExitPos(entity)
-		val newEntity = EP3Teleporter.apply(entity, ex, ey, ez, exitWorld)
+
+		val enterEvent = new GatewayEnterEvent(
+			entity,
+			new ChunkCoordinates(xCoord, yCoord, zCoord),
+			worldObj,
+			new ChunkCoordinates(exitPos),
+			exitWorld,
+			Vec3.createVectorHelper(ex, ey, ez))
+
+		if (MinecraftForge.EVENT_BUS.post(enterEvent))
+			return
+
+		val server = enterEvent.destWorld.as[WorldServer].getOrElse(Utils.world(enterEvent.destWorld.provider.dimensionId))
+		val newEntity = EP3Teleporter.apply(entity, enterEvent.destPos.xCoord, enterEvent.destPos.yCoord, enterEvent.destPos.zCoord, server)
 		if (newEntity == null)
 			return
+
 		setCooldown(newEntity)
+		MinecraftForge.EVENT_BUS.post(
+			new GatewayLeaveEvent(
+				newEntity,
+				new ChunkCoordinates(xCoord, yCoord, zCoord),
+				worldObj,
+				new ChunkCoordinates(exitPos),
+				exitWorld)
+		)
+	}
+
+	private def checkConnectionValid(): Unit = {
+		exitWorld
+			.getTileEntity(exitPos.posX, exitPos.posY, exitPos.posZ)
+			.as[TileGateway]
+			.getOrElse { throw new IllegalStateException("FATAL: no peer gateway found.") }
 	}
 
 	private def setCooldown(entity: Entity): Unit =
