@@ -35,9 +35,9 @@ trait SidedInventoryConnector extends ConnectorHost with ISidedInventory {
 
 	def isUseableByPlayer(player : EntityPlayer): Boolean = ???
 
-	def openInventory(): Unit = ???
+	def openInventory(): Unit = { }
 
-	def closeInventory(): Unit = ???
+	def closeInventory(): Unit = { }
 
 	def isItemValidForSlot(slot : Int, item : ItemStack): Boolean = ???
 }
