@@ -5,9 +5,7 @@ import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.stats.AchievementList
 import net.minecraft.tileentity.TileEntity
-import net.minecraft.util.ChatComponentText
-import net.minecraft.util.ChatStyle
-import net.minecraft.util.EnumChatFormatting
+import net.minecraft.util.{ChunkCoordinates, ChatComponentText, ChatStyle, EnumChatFormatting}
 
 import Utils._
 import net.minecraft.world.WorldServer
@@ -22,21 +20,8 @@ class TileGateway extends TileEntity {
 	/** Portal creator and owner's UUID */
 	private var owner = EmptyOwner
 	private var ownerName = ""
-	private var exitCoord: Option[(Int, Int, Int, Int)] = None
-	private val exitTile = new Cached(
-		() => {
-			if (worldObj.isRemote)
-				throw new IllegalStateException("Not on client")
-			val (ex, ey, ez, ew) = exitCoord.get
-			if (owner == null || owner == EmptyOwner)
-			// FIXME: more graceful shutdown?
-				throw new IllegalStateException("Gateway not initialized properly: owner isn't set")
-			Utils
-				.world(ew)
-				.getTileEntity(ex, ey, ez)
-				.as[TileGateway]
-		}
-	)
+	private var exitPos: ChunkCoordinates = null
+	private var exitWorld: WorldServer = null
 	private var flags = 0
 
 	/*******************************************************************************************************************
@@ -102,7 +87,7 @@ class TileGateway extends TileEntity {
 			return
 
 		for (e <- teleportQueue)
-			getExitTile.receiveEntity(e, this)
+			teleport(e)
 		teleportQueue = Nil
 	}
 
@@ -116,14 +101,10 @@ class TileGateway extends TileEntity {
 		// Remove multiblock here
 		GatewayMod.BlockGateway.cores(metadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
-		exitTile.get foreach { _.invalidate() }
-	}
-
-	// Notify partner core that this one is unloaded
-	override def onChunkUnload(): Unit = {
-		super.onChunkUnload()
-		if (isMainState)
-			exitTile.get foreach { _.exitTile.reset() }
+		exitWorld
+			.getTileEntity(exitPos.posX, exitPos.posY, exitPos.posZ)
+			.as[TileGateway]
+			.foreach { _.invalidate() }
 	}
 
 	// NBT
@@ -132,8 +113,8 @@ class TileGateway extends TileEntity {
 			return
 		super.readFromNBT(tag)
 		val pos = tag.getIntArray("exitPos")
-		exitCoord = Some((pos(0), pos(1), pos(2), pos(3)))
-		exitTile.reset()
+		exitPos = new ChunkCoordinates(pos(0), pos(1), pos(2))
+		exitWorld = Utils.world(pos(3))
 		owner = java.util.UUID.fromString(tag.getString("owner"))
 		ownerName = tag.getString("ownerName")
 		flags = tag.getInteger("flags")
@@ -143,8 +124,7 @@ class TileGateway extends TileEntity {
 		if (tag == null)
 			return
 		super.writeToNBT(tag)
-		val (ex, ey, ez, ew) = exitCoord.get
-		tag.setIntArray("exitPos", Array(ex, ey, ez, ew))
+		tag.setIntArray("exitPos", Array(exitPos.posX, exitPos.posY, exitPos.posZ, exitWorld.provider.dimensionId))
 		tag.setString("owner", owner.toString)
 		tag.setString("ownerName", ownerName)
 		tag.setInteger("flags", flags)
@@ -167,7 +147,8 @@ class TileGateway extends TileEntity {
 			teleportQueue :+= mount
 	}
 
-	def getExitTile = exitTile.get getOrElse { throw new IllegalStateException("No gateway detected on the other side") }
+	def getExitPos = exitPos
+	def getExitWorld = exitWorld
 
 	def init(endpoint: TileGateway, player: EntityPlayer): Unit = {
 		if (worldObj.isRemote)
@@ -176,10 +157,10 @@ class TileGateway extends TileEntity {
 			throw new IllegalStateException("Gateway parameters are set only once")
 
 		state = Alive
-		exitCoord = Some((endpoint.xCoord, endpoint.yCoord, endpoint.zCoord, endpoint.worldObj.provider.dimensionId))
+		exitPos = new ChunkCoordinates(endpoint.xCoord, endpoint.yCoord, endpoint.zCoord)
+		exitWorld = Utils.world(endpoint.worldObj.provider.dimensionId)
 		owner = player.getGameProfile.getId
 		ownerName = player.getGameProfile.getName
-		exitTile.reset()
 		// NB: assemble isn't used here. Because multiblock should be already constructed by the time TE is initialized
 		markDirty()
 		metadata = getBlockMetadata
@@ -196,20 +177,20 @@ class TileGateway extends TileEntity {
 			)
 			return
 		}
-		markSideDisposed(side, true)
+		markSideDisposed(side, mark = true)
 		if (!areAllSidesMarked)
 			return
 
 		invalidate()
 		player.addChatMessage(
-			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${getExitTile.getWorldObj.provider.getDimensionName} was severed")
+			new ChatComponentText(s"Gateway from ${worldObj.provider.getDimensionName} to ${exitWorld.provider.getDimensionName} was severed")
 				.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW))
 		)
 	}
 
 	def unmarkForDispose(side: Int) {
 		if (isMainState)
-			markSideDisposed(side, false)
+			markSideDisposed(side, mark = false)
 	}
 
 	/*******************************************************************************************************************
@@ -221,15 +202,13 @@ class TileGateway extends TileEntity {
 	/** Sends teleporting entity to peer tile
 	 *
 	 * @param entity The one being teleported
-	 * @param from   Source gateway core
 	 */
-	protected def receiveEntity(entity: Entity, from: TileGateway): Unit = {
-		val (ex, ey, ez) = getExitPos(entity, from, this)
-		val newEntity = EP3Teleporter.apply(entity, ex, ey, ez, worldObj.as[WorldServer].get)
+	protected def teleport(entity: Entity): Unit = {
+		val (ex, ey, ez) = getExitPos(entity)
+		val newEntity = EP3Teleporter.apply(entity, ex, ey, ez, exitWorld)
 		if (newEntity == null)
 			return
 		setCooldown(newEntity)
-		toggleAchievements(newEntity, from)
 	}
 
 	private def setCooldown(entity: Entity): Unit =
@@ -237,27 +216,15 @@ class TileGateway extends TileEntity {
 			if (e.timeUntilPortal < Utils.DefaultCooldown)
 				e.timeUntilPortal = Utils.DefaultCooldown
 
-	private def toggleAchievements(entity: Entity, from: TileEntity) =
-		for {
-			e <- Utils.enumRiders(entity).map { _.as[EntityPlayer] }
-			ep <- e
-		}
-			if (worldObj.provider.dimensionId == Utils.NetherDimensionId)
-				ep.triggerAchievement(AchievementList.portal)
-			else if (worldObj.provider.dimensionId == Utils.EndDimensionId)
-				ep.triggerAchievement(AchievementList.theEnd)
-			else if (from.getWorldObj.provider.dimensionId == Utils.EndDimensionId)
-				ep.triggerAchievement(AchievementList.theEnd2)
-
 	/*******************************************************************************************************************
 	 * Teleporting: computes destination coordinates for the entity, based on enter and exit tiles
 	 * TODO: maybe move to separate object
 	 ******************************************************************************************************************/
-	def getExitPos(entity: Entity, from: TileEntity, to: TileEntity) =
-		translateCoordEnterToExit(getEntityThruBlockExit(entity, from.xCoord, from.yCoord, from.zCoord), from, to)
+	def getExitPos(entity: Entity) =
+		translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord))
 	// Transposes specified set of coordinates along vector specified by this and source TEs' coords
-	private def translateCoordEnterToExit(coord: (Double, Double, Double), from: TileEntity, to: TileEntity): (Double, Double, Double) =
-		(coord._1 + to.xCoord - from.xCoord, coord._2 + to.yCoord - from.yCoord, coord._3 + to.zCoord - from.zCoord)
+	private def translateCoordEnterToExit(coord: (Double, Double, Double)): (Double, Double, Double) =
+		(coord._1 + exitPos.posX - xCoord, coord._2 + exitPos.posY - yCoord, coord._3 + exitPos.posZ - zCoord)
 	/** This function is used to calculate entity's position after moving through a block
 	 *  Entity is considered to touch block at the start of move, and it's really necessary
 	 *  for the computation to be correct. The move itself is like entity has moved in XZ plane

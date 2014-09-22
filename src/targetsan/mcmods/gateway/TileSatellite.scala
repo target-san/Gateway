@@ -4,6 +4,7 @@ import net.minecraft.tileentity.TileEntity
 import net.minecraftforge.common.util.ForgeDirection
 import scala.reflect.ClassTag
 import targetsan.mcmods.gateway.connectors._
+import Utils._
 
 trait ConnectorHost {
 	// Retrieve list of connectable sides
@@ -13,12 +14,8 @@ trait ConnectorHost {
 	// to the specified side
 	def connectedTile(side: ForgeDirection): Option[TileEntity]
 	// Helper func, performs retrieval with type cast
-	def typedTile[T](side: ForgeDirection)(implicit tag: ClassTag[T]): Option[T] =
-		for {
-			tile <- connectedTile(side)
-			typed <- tag.unapply(tile)
-		}
-			yield typed
+	def typedTile[T: ClassTag](side: ForgeDirection): Option[T] =
+		connectedTile(side) flatMap { _.as[T] }
 }
 
 object TileSatellite
@@ -39,6 +36,27 @@ object TileSatellite
 		.filter(_ != ForgeDirection.UNKNOWN)
 }
 
+/** Uses relatively cheap tag function to update heavyweight main value
+ *  Used to retrieve connected tiles at most once per tick
+ */
+class Tagged[T, TagT]( private val tagfunc: () => TagT, private val init: () => T) {
+	private var tag: TagT = tagfunc()
+	private var value: Option[T] = None
+
+	def get: T = {
+		val newtag = tagfunc()
+		if (tag != newtag)
+		{
+			tag = newtag
+			value = None
+		}
+
+		if (value.isEmpty)
+			value = Some(init())
+		value.get
+	}
+}
+
 class TileSatellite extends TileEntity with ConnectorHost
 	with FluidConnector
 {
@@ -47,33 +65,46 @@ class TileSatellite extends TileEntity with ConnectorHost
 	private lazy val SatBlock = GatewayMod.BlockGateway.subBlock(getBlockMetadata).asInstanceOf[SubBlockSatellite]
 	private lazy val ConnectedSides = connectSides(SatBlock) 
 	
-	private val ConnectedSats = new Cached( () =>
+	private val ConnectedSats = new Tagged(
+		() => worldObj.getTotalWorldTime,
+		() => // Did this as a for-comprehension for safety - no crashes,
+			  // just connected tiles not accessible on any trouble {
 		{
-			val core = worldObj.getTileEntity(xCoord - SatBlock.xOffset, yCoord, zCoord - SatBlock.zOffset).asInstanceOf[TileGateway]
-			val endTile = core.getExitTile
-
-			def otherSat(dx: Int, dz: Int) = 
-				endTile.getWorldObj
-				.getTileEntity(endTile.xCoord + dx, endTile.yCoord, endTile.zCoord + dz)
-				.asInstanceOf[TileSatellite]
-
-			ConnectedSides.map( s => (s, otherSat(-s.offsetX, -s.offsetZ) ) ).toMap
-		}
+			for {
+				core <- worldObj // locate this satellite's core
+					.getTileEntity(xCoord - SatBlock.xOffset, yCoord, zCoord - SatBlock.zOffset)
+					.as[TileGateway]
+					.view
+				endPos <- Option(core.getExitPos).view
+				endCore <- core // locate exit core
+					.getExitWorld
+					.getTileEntity(endPos.posX, endPos.posY, endPos.posZ)
+					.as[TileGateway]
+					.view
+				side <- ConnectedSides // enum sides
+				sat <- endCore // locate connected satellites
+					.getWorldObj
+					.getTileEntity(endCore.xCoord - side.offsetX, endCore.yCoord, endCore.zCoord - side.offsetZ)
+					.as[TileSatellite]
+			}
+				yield (side, sat)
+		}.toMap
 	)
 
-	protected def invalidatePartners() =
-		ConnectedSats.reset()
-
-	override def onChunkUnload()
-	{ // This should notify linked partners that this TE instance will be unloaded shortly
-		ConnectedSats.get foreach { _._2.invalidatePartners() }
-	}
+	private val ConnectedTiles = new Tagged(
+		() => worldObj.getTotalWorldTime,
+		() =>
+			for {
+				(side, sat) <- ConnectedSats.get
+				tile <- Option(// tile entity adjacent to satellite
+					sat
+					.getWorldObj
+					.getTileEntity(sat.xCoord - side.offsetX, sat.yCoord, sat.zCoord - side.offsetZ)
+				)
+			}
+				yield (side, tile)
+	)
 
 	def sides = ConnectedSides
-	def connectedTile(side: ForgeDirection) =
-		for {
-			t <- ConnectedSats.get.get(side)
-			tile <- Option(t.getWorldObj.getTileEntity(t.xCoord - side.offsetX, t.yCoord - side.offsetY, t.zCoord - side.offsetZ))
-		}
-			yield tile
+	def connectedTile(side: ForgeDirection) = ConnectedTiles.get.get(side)
 }
