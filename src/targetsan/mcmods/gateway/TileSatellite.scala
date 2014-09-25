@@ -7,40 +7,26 @@ import targetsan.mcmods.gateway.connectors._
 import Utils._
 
 trait ConnectorHost {
-	// Retrieve list of connectable sides
-	// i.e. the sides that are active on this connector
-	def sides: Seq[ForgeDirection]
-	// Retrieve tile entity which is considered connected
-	// to the specified side
-	def connectedTile(side: ForgeDirection): Option[TileEntity]
-	// Helper func, performs retrieval with type cast
-	def typedTile[T: ClassTag](side: ForgeDirection): Option[T] =
-		connectedTile(side) flatMap { _.as[T] }
-}
+	def tiles: Map[ForgeDirection, TileEntity]
 
-object TileSatellite
-{
-	def connectSides(sat: SubBlockSatellite) =
-		List(
-			sat.xOffset match {
-				case -1 => ForgeDirection.WEST
-				case 1 => ForgeDirection.EAST
-				case _ => ForgeDirection.UNKNOWN
-			},
-			sat.zOffset match {
-				case -1 => ForgeDirection.NORTH
-				case 1 => ForgeDirection.SOUTH
-				case _ => ForgeDirection.UNKNOWN
-			}
-		)
-		.filter(_ != ForgeDirection.UNKNOWN)
+	def tile(side: ForgeDirection): Option[TileEntity] = tiles get side
+
+	def tileAs[T: ClassTag](side: ForgeDirection): Option[T] =
+		tiles get side flatMap { _.as[T] }
+
+	def tilesAs[T: ClassTag]: Map[ForgeDirection, T] =
+		for {
+			(key, value) <- tiles
+			typed <- value.as[T]
+		}
+			yield (key, typed)
 }
 
 /** Uses relatively cheap tag function to update heavyweight main value
  *  Used to retrieve connected tiles at most once per tick
  */
-class Tagged[T, TagT]( private val tagfunc: () => TagT, private val init: () => T) {
-	private var tag: TagT = tagfunc()
+class Tagged[T]( private val tagfunc: () => Long, private val init: () => T) {
+	private var tag = 0L
 	private var value: Option[T] = None
 
 	def get: T = {
@@ -60,11 +46,33 @@ class Tagged[T, TagT]( private val tagfunc: () => TagT, private val init: () => 
 class TileSatellite extends TileEntity with ConnectorHost
 	with FluidConnector
 {
-	import TileSatellite._
-	
+	//******************************************************************************************************************
+	// ConnectorHost support
+	//******************************************************************************************************************
+	def tiles = ConnectedTiles.get
+
+	//******************************************************************************************************************
+	// Some private data
+	//******************************************************************************************************************
 	private lazy val SatBlock = GatewayMod.BlockGateway.subBlock(getBlockMetadata).asInstanceOf[SubBlockSatellite]
-	private lazy val ConnectedSides = connectSides(SatBlock) 
-	
+	private lazy val ConnectedSides =
+		List(
+			SatBlock.xOffset match {
+				case -1 => ForgeDirection.WEST
+				case 1 => ForgeDirection.EAST
+				case _ => ForgeDirection.UNKNOWN
+			},
+			SatBlock.zOffset match {
+				case -1 => ForgeDirection.NORTH
+				case 1 => ForgeDirection.SOUTH
+				case _ => ForgeDirection.UNKNOWN
+			}
+		)
+			.filter(_ != ForgeDirection.UNKNOWN)
+
+	//******************************************************************************************************************
+	// Connector maps, lazily constructed
+	//******************************************************************************************************************
 	private val ConnectedSats = new Tagged(
 		() => worldObj.getTotalWorldTime,
 		() => // Did this as a for-comprehension for safety - no crashes,
@@ -104,7 +112,4 @@ class TileSatellite extends TileEntity with ConnectorHost
 			}
 				yield (side, tile)
 	)
-
-	def sides = ConnectedSides
-	def connectedTile(side: ForgeDirection) = ConnectedTiles.get.get(side)
 }

@@ -9,20 +9,20 @@ import targetsan.mcmods.gateway.ConnectorHost
  */
 trait FluidConnector extends ConnectorHost with IFluidHandler {
 	def fill(from: ForgeDirection, resource: FluidStack, doFill: Boolean): Int =
-		typedTile[IFluidHandler](from) map { _.fill(from, resource, doFill) } getOrElse 0
+		tileAs[IFluidHandler](from) map { _.fill(from, resource, doFill) } getOrElse 0
 
 	def drain(from: ForgeDirection, resource: FluidStack, doDrain: Boolean): FluidStack =
-		typedTile[IFluidHandler](from) map { _.drain(from, resource, doDrain) } getOrElse null
+		tileAs[IFluidHandler](from) map { _.drain(from, resource, doDrain) } getOrElse null
 
 	def drain(from: ForgeDirection, maxDrain: Int, doDrain: Boolean): FluidStack =
-		typedTile[IFluidHandler](from) map { _.drain(from, maxDrain, doDrain) } getOrElse null
+		tileAs[IFluidHandler](from) map { _.drain(from, maxDrain, doDrain) } getOrElse null
 
 	def canFill(from: ForgeDirection, fluid: Fluid): Boolean =
-		typedTile[IFluidHandler](from) map { _.canFill(from, fluid) } getOrElse false
+		tileAs[IFluidHandler](from) map { _.canFill(from, fluid) } getOrElse false
 
 	def canDrain(from: ForgeDirection, fluid: Fluid): Boolean =
-		typedTile[IFluidHandler](from) map { _.canDrain(from, fluid) } getOrElse false
+		tileAs[IFluidHandler](from) map { _.canDrain(from, fluid) } getOrElse false
 
 	def getTankInfo(from: ForgeDirection): Array[FluidTankInfo] =
-		typedTile[IFluidHandler](from) map { _.getTankInfo(from) } getOrElse Array.empty[FluidTankInfo]
+		tileAs[IFluidHandler](from) map { _.getTankInfo(from) } getOrElse Array.empty[FluidTankInfo]
 }

@@ -14,9 +14,9 @@ import net.minecraftforge.common.MinecraftForge
 class TileGateway extends TileEntity {
 	private val EmptyOwner = new java.util.UUID(0L, 0L)
 
-	/*******************************************************************************************************************
-	 * Gateway tile entity's state variables
-	 ******************************************************************************************************************/
+	//******************************************************************************************************************
+	// Gateway tile entity's state variables
+	//******************************************************************************************************************
 
 	/** Portal creator and owner's UUID */
 	private var owner = EmptyOwner
@@ -25,9 +25,9 @@ class TileGateway extends TileEntity {
 	private var exitWorld: WorldServer = null
 	private var flags = 0
 
-	/*******************************************************************************************************************
-	  * Flags: disposal marks. When all 4 marks are set, gateway is removed from world, along with its peer
-	  *****************************************************************************************************************/
+	//******************************************************************************************************************
+	// Flags: disposal marks. When all 4 marks are set, gateway is removed from world, along with its peer
+	//******************************************************************************************************************
 	private val DisposeMarksMask = 0x0F
 
 	private def sideToFlag(side: Int): Int = {
@@ -42,9 +42,9 @@ class TileGateway extends TileEntity {
 
 	private def areAllSidesMarked = (flags & DisposeMarksMask) == DisposeMarksMask
 
-	/********************************************************************************************************************
-	  * Flags: owner block's stored metadata; used to define exact block type
-	  *****************************************************************************************************************/
+	//******************************************************************************************************************
+	// Flags: owner block's stored metadata; used to define exact block type
+	//******************************************************************************************************************
 	private val MetaMask = 0x0F
 	private val MetaOffset = 4
 
@@ -56,9 +56,9 @@ class TileGateway extends TileEntity {
 		flags = (flags & ~mask) | newValue
 	}
 
-	/*******************************************************************************************************************
-	  * Flags: multiblock state - not initialized, working or disposing
-	  *****************************************************************************************************************/
+	//******************************************************************************************************************
+	// Flags: multiblock state - not initialized, working or disposing
+	//******************************************************************************************************************
 	private object State extends Enumeration {
 		type State = Value
 		val PreInit, Alive, Disposing = Value
@@ -79,9 +79,9 @@ class TileGateway extends TileEntity {
 
 	private def isMainState = !worldObj.isRemote && state == Alive
 
-	/*******************************************************************************************************************
-	  * Overrides
-	  *****************************************************************************************************************/
+	//******************************************************************************************************************
+	// Overrides
+	//******************************************************************************************************************
 	override def updateEntity(): Unit = {
 		super.updateEntity()
 		if (!isMainState)
@@ -133,9 +133,9 @@ class TileGateway extends TileEntity {
 		tag.setInteger("flags", flags)
 	}
 
-	/*******************************************************************************************************************
-	  * Public API
-	  *****************************************************************************************************************/
+	//******************************************************************************************************************
+	// Public API
+	//******************************************************************************************************************
 
 	/** Teleports entity
 	 *
@@ -196,9 +196,9 @@ class TileGateway extends TileEntity {
 			markSideDisposed(side, mark = false)
 	}
 
-	/*******************************************************************************************************************
-	 * Private helpers
-	 ******************************************************************************************************************/
+	//******************************************************************************************************************
+	// Private helpers
+	//******************************************************************************************************************
 
 	private var teleportQueue: List[Entity] = Nil
 
@@ -248,10 +248,10 @@ class TileGateway extends TileEntity {
 			if (e.timeUntilPortal < Utils.DefaultCooldown)
 				e.timeUntilPortal = Utils.DefaultCooldown
 
-	/*******************************************************************************************************************
-	 * Teleporting: computes destination coordinates for the entity, based on enter and exit tiles
-	 * TODO: maybe move to separate object
-	 ******************************************************************************************************************/
+	//******************************************************************************************************************
+	// Teleporting: computes destination coordinates for the entity, based on enter and exit tiles
+	// TODO: maybe move to separate object
+	//******************************************************************************************************************
 	def getExitPos(entity: Entity) =
 		translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord))
 	// Transposes specified set of coordinates along vector specified by this and source TEs' coords

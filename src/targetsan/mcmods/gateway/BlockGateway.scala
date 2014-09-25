@@ -156,7 +156,10 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 	setBlockTextureName("gateway:smooth_obsidian")
 	
 	private val icons = Array.fill[IIcon](6)(null)
-	
+
+	override def hasTileEntity(meta: Int) = true
+	override def createNewTileEntity(world: World, meta: Int) = new TileSatellite
+
 	override def onBlockActivated(world: World, x: Int, y: Int, z: Int, player: EntityPlayer, side: Int, xTouch: Float, yTouch: Float, zTouch: Float): Boolean =
 	{
 		if (world.isRemote ||

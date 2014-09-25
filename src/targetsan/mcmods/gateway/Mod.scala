@@ -23,6 +23,7 @@ object GatewayMod {
 	{
 		GameRegistry.registerBlock(BlockGateway, "BlockGateway")
 		GameRegistry.registerTileEntity(classOf[TileGateway], "tileGateway")
+		GameRegistry.registerTileEntity(classOf[TileSatellite], "tileSatellite")
 	}
 
     @Mod.EventHandler
