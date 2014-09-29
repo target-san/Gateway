@@ -120,6 +120,17 @@ class BlockGateway extends BlockContainer(Material.rock)
 	override def canEntityDestroy(world: IBlockAccess, x: Int, y: Int, z: Int, entity: Entity) = false
 	// Nothing spawns here
 	override def canCreatureSpawn(creature: EnumCreatureType, world: IBlockAccess, x: Int, y: Int, z: Int) = false
+
+	//******************************************************************************************************************
+	// Redstone delegation
+	//******************************************************************************************************************
+	override def canProvidePower = true
+
+	override def isProvidingStrongPower(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int) =
+		subBlock(world, x, y, z).isProvidingStrongPower(world, x, y, z, side)
+
+	override def isProvidingWeakPower(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int) =
+		subBlock(world, x, y, z).isProvidingWeakPower(world, x, y, z, side)
 }
 
 class SubBlockCore(val multiblock: Multiblock) extends SubBlock(Material.rock)
@@ -181,16 +192,28 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 	
 	override def onNeighborBlockChange(world: World, x: Int, y: Int, z: Int, block: Block)
 	{
-		if (world.isRemote ||
-			isDiagonal ||
+		if (world.isRemote)
+			return
+		// Redstone logic, read all inputs into tile entity
+		for {
+			tile <- world.getTileEntity(x, y, z).as[TileSatellite]
+			side <- ForgeDirection.VALID_DIRECTIONS
+		}
+		{
+			tile.setRedstoneStrongInput(side, world.isBlockProvidingPowerTo(x + side.offsetX, y + side.offsetY, z + side.offsetZ, side.getOpposite.ordinal()) )
+			tile.setRedstoneWeakInput(side, world.getIndirectPowerLevelTo(x + side.offsetX, y + side.offsetY, z + side.offsetZ, side.getOpposite.ordinal()) )
+		}
+
+		// Deconstruction logic
+		if (isDiagonal ||
 			world.getBlock(x, y + 1, z) == Blocks.fire
 		)
 			return
 		
-		val tile = world
+		for ( tile <- world
 			.getTileEntity(x - xOffset, y, z - zOffset)
-			.asInstanceOf[TileGateway]
-		if (tile != null)
+			.as[TileGateway]
+		)
 			tile.unmarkForDispose(this.side)
 	}
 	
@@ -251,6 +274,16 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 	}
 	
 	override def getIcon(side: Int, meta: Int): IIcon = icons(side)
+
+	//******************************************************************************************************************
+	// Redstone connector support
+	//******************************************************************************************************************
+	override def isProvidingStrongPower(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int) =
+		world.getTileEntity(x, y, z).as[TileSatellite] map { _.getRedstoneStrongPower(ForgeDirection.getOrientation(side)) } getOrElse 0
+
+
+	override def isProvidingWeakPower(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int) =
+		world.getTileEntity(x, y, z).as[TileSatellite] map { _.getRedstoneWeakPower(ForgeDirection.getOrientation(side)) } getOrElse 0
 }
 
 class SubBlockPillar extends SubBlock(Material.air)

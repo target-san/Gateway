@@ -47,6 +47,19 @@ class TileSatellite extends TileEntity with ConnectorHost
 	with FluidConnector
 {
 	//******************************************************************************************************************
+	// Redstone support
+	//******************************************************************************************************************
+	def setRedstoneStrongInput(side: ForgeDirection, signal: Int): Unit = {
+
+	}
+	def setRedstoneWeakInput(side: ForgeDirection, signal: Int): Unit = {
+
+	}
+
+	def getRedstoneStrongPower(side: ForgeDirection): Int = 0
+	def getRedstoneWeakPower(side: ForgeDirection): Int = 0
+
+	//******************************************************************************************************************
 	// ConnectorHost support
 	//******************************************************************************************************************
 	def tiles = ConnectedTiles.get
