@@ -46,6 +46,9 @@ object EventHandler
 			GatewayMod
 			.BlockGateway
 			.cores
+			// Success(false) = nothing found, but we can continue
+			// Success(true)  = some multiblock successfully constructed, we should stop
+			// Failure(error) = some multiblock was valid to construct, but an error occured
 			.foldLeft[Try[Boolean]](Success(false))
 			{	case (Success(false), (_, core)) =>
 					core.multiblock.assemble(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
