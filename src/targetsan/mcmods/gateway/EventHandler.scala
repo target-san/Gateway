@@ -10,7 +10,7 @@ import net.minecraft.util.ChatComponentText
 import net.minecraft.init.Blocks
 import net.minecraft.util.ChatStyle
 import net.minecraft.util.EnumChatFormatting
-import net.minecraftforge.event.world.WorldEvent
+import net.minecraftforge.event.world.{ChunkEvent, WorldEvent}
 import net.minecraft.item.ItemStack
 import net.minecraftforge.oredict.OreDictionary
 import cpw.mods.fml.common.Loader
@@ -26,6 +26,14 @@ object EventHandler
 		if (event.world.isRemote) // client-only
 		if (Loader.isModLoaded("NotEnoughItems")) // makes sense only for NEI
 			codechicken.nei.api.API.hideItem(BlockGatewayItemStack)
+
+	// Used to handle unload watchers when they're needed
+	// Satellite installs such a watcher over its linked tile's chunk
+	// but only in case they're in different chunks
+	@SubscribeEvent
+	def onChunkUnload(event: ChunkEvent.Unload): Unit =
+		if (!event.world.isRemote)
+		{ } // TODO: implement
 	
     @SubscribeEvent
     def onFlintAndSteelPreUse(event: PlayerInteractEvent): Unit =
