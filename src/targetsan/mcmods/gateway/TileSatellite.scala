@@ -1,6 +1,7 @@
 package targetsan.mcmods.gateway
 
 import net.minecraft.tileentity.TileEntity
+import net.minecraft.util.ChunkCoordinates
 import net.minecraftforge.common.util.ForgeDirection
 import scala.reflect.ClassTag
 import targetsan.mcmods.gateway.connectors._
@@ -25,21 +26,18 @@ trait ConnectorHost {
 /** Uses relatively cheap tag function to update heavyweight main value
  *  Used to retrieve connected tiles at most once per tick
  */
-class Tagged[T]( private val tagfunc: () => Long, private val init: () => T) {
-	private var tag = 0L
+class Cached[T](private val init: () => T) {
 	private var value: Option[T] = None
 
 	def get: T = {
-		val newtag = tagfunc()
-		if (tag != newtag)
-		{
-			tag = newtag
-			value = None
-		}
-
 		if (value.isEmpty)
 			value = Some(init())
 		value.get
+	}
+
+	def reset(): Unit =
+	{
+		value = None
 	}
 }
 
@@ -47,28 +45,45 @@ class TileSatellite extends TileEntity with ConnectorHost
 	with FluidConnector
 {
 	//******************************************************************************************************************
-	// Redstone support
+	// Controlling cached references and notifying on their invalidation
 	//******************************************************************************************************************
-	def setRedstoneStrongInput(side: ForgeDirection, signal: Int): Unit = {
+	def notifyPartnersOfTilesChanged(): Unit =
+		Partners.get map {
+			case (_, t) =>
+				t.Partners.reset()
+				t.LinkedTiles.reset()
+		}
+	// This one is invoked only from underlying block's onNeighborBlockChange
+	def notifyPartnersOfRedstoneChanged(): Unit =
+		Partners.get map { _._2.IncomingPower.reset() }
 
+	override def onChunkUnload(): Unit =
+	{
+		notifyPartnersOfTilesChanged()
 	}
-	def setRedstoneWeakInput(side: ForgeDirection, signal: Int): Unit = {
 
-	}
-
-	def getRedstoneStrongPower(side: ForgeDirection): Int = 0
-	def getRedstoneWeakPower(side: ForgeDirection): Int = 0
+	//******************************************************************************************************************
+	// Redstone support
+	// Not in trait because references IncomingPower
+	//******************************************************************************************************************
+	def getRedstoneStrongPower(side: ForgeDirection): Int =
+		IncomingPower.get get side map { _._1 } getOrElse 0
+	def getRedstoneWeakPower(side: ForgeDirection): Int =
+		IncomingPower.get get side map { _._2 } getOrElse 0
 
 	//******************************************************************************************************************
 	// ConnectorHost support
 	//******************************************************************************************************************
-	def tiles = ConnectedTiles.get
+	def tiles = LinkedTiles.get
 
 	//******************************************************************************************************************
-	// Some private data
+	// Several lazy values which don't change during tile's lifetime, but cannot be initialized in constructor
 	//******************************************************************************************************************
+
 	private lazy val SatBlock = GatewayMod.BlockGateway.subBlock(getBlockMetadata).asInstanceOf[SubBlockSatellite]
-	private lazy val ConnectedSides =
+	private def coreTile = worldObj.getTileEntity(xCoord - SatBlock.xOffset, yCoord, zCoord - SatBlock.zOffset).asInstanceOf[TileGateway]
+
+	private lazy val LinkedSides =
 		List(
 			SatBlock.xOffset match {
 				case -1 => ForgeDirection.WEST
@@ -83,46 +98,52 @@ class TileSatellite extends TileEntity with ConnectorHost
 		)
 			.filter(_ != ForgeDirection.UNKNOWN)
 
+	private lazy val LinkedWorld = coreTile.getExitWorld // Theoretically, doesn't change during single session
+	private lazy val LinkedPartnerCoords =
+		LinkedSides.map { side =>
+			val linkedCorePos = coreTile.getExitPos
+			(side, new ChunkCoordinates(linkedCorePos.posX - 2 * side.offsetX, linkedCorePos.posY, linkedCorePos.posZ - 2 * side.offsetZ))
+		}
+		.toMap
+
+	private lazy val LinkedTileCoords =
+		for ( (side, pos) <- LinkedPartnerCoords)
+			yield (side, new ChunkCoordinates(pos.posX - side.offsetX, pos.posY - side.offsetY, pos.posZ - side.offsetZ) )
+
 	//******************************************************************************************************************
 	// Connector maps, lazily constructed
+	// Should be invalidated when:
+	// 1. Redstone on the other side changes
+	// 2. Tile entity on the other
 	//******************************************************************************************************************
-	private val ConnectedSats = new Tagged(
-		() => worldObj.getTotalWorldTime,
+	private val Partners = new Cached(
 		() => // Did this as a for-comprehension for safety - no crashes,
 			  // just connected tiles not accessible on any trouble {
-		{
 			for {
-				core <- worldObj // locate this satellite's core
-					.getTileEntity(xCoord - SatBlock.xOffset, yCoord, zCoord - SatBlock.zOffset)
-					.as[TileGateway]
-					.view
-				endPos <- Option(core.getExitPos).view
-				endCore <- core // locate exit core
-					.getExitWorld
-					.getTileEntity(endPos.posX, endPos.posY, endPos.posZ)
-					.as[TileGateway]
-					.view
-				side <- ConnectedSides // enum sides
-				sat <- endCore // locate connected satellites
-					.getWorldObj
-					.getTileEntity(endCore.xCoord - side.offsetX, endCore.yCoord, endCore.zCoord - side.offsetZ)
-					.as[TileSatellite]
-			}
-				yield (side, sat)
-		}.toMap
-	)
-
-	private val ConnectedTiles = new Tagged(
-		() => worldObj.getTotalWorldTime,
-		() =>
-			for {
-				(side, sat) <- ConnectedSats.get
-				tile <- Option(// tile entity adjacent to satellite
-					sat
-					.getWorldObj
-					.getTileEntity(sat.xCoord - side.offsetX, sat.yCoord, sat.zCoord - side.offsetZ)
-				)
+				(side, pos) <- LinkedPartnerCoords
+				tile <- LinkedWorld.getTileEntity(pos.posX, pos.posY, pos.posZ).as[TileSatellite]
 			}
 				yield (side, tile)
+	)
+
+	private val LinkedTiles = new Cached(
+		() =>
+			for {
+				(side, pos) <- LinkedTileCoords
+				tile <- Option(LinkedWorld.getTileEntity(pos.posX - side.offsetX, pos.posY, pos.posZ - side.offsetZ))
+			}
+				yield (side, tile)
+		)
+
+	private val IncomingPower = new Cached(
+		() =>
+			for {
+				(side, sat) <- Partners.get
+			}
+				yield (side,
+					(	sat.getWorldObj.isBlockProvidingPowerTo(sat.xCoord - side.offsetX, sat.yCoord, sat.zCoord - side.offsetZ, side.ordinal()),
+						sat.getWorldObj.getIndirectPowerLevelTo(sat.xCoord - side.offsetX, sat.yCoord, sat.zCoord - side.offsetZ, side.ordinal())
+					)
+				)
 	)
 }

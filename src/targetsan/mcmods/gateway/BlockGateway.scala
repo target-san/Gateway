@@ -181,11 +181,10 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 		)
 			return false
 		
-		val tile = world
+		world
 			.getTileEntity(x - xOffset, y, z - zOffset)
-			.asInstanceOf[TileGateway]
-		if (tile != null)
-			tile.markForDispose(player, this.side)
+			.as[TileGateway]
+			.map { _.markForDispose(player, this.side) }
 		
 		false
 	}
@@ -194,15 +193,11 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 	{
 		if (world.isRemote)
 			return
-		// Redstone logic, read all inputs into tile entity
-		for {
-			tile <- world.getTileEntity(x, y, z).as[TileSatellite]
-			side <- ForgeDirection.VALID_DIRECTIONS
-		}
-		{
-			tile.setRedstoneStrongInput(side, world.isBlockProvidingPowerTo(x + side.offsetX, y + side.offsetY, z + side.offsetZ, side.getOpposite.ordinal()) )
-			tile.setRedstoneWeakInput(side, world.getIndirectPowerLevelTo(x + side.offsetX, y + side.offsetY, z + side.offsetZ, side.getOpposite.ordinal()) )
-		}
+		// Redstone logic, invalidate cached redstone values
+		world
+			.getTileEntity(x, y, z)
+			.as[TileSatellite]
+			.map { t => t.notifyPartnersOfTilesChanged(); t.notifyPartnersOfRedstoneChanged() }
 
 		// Deconstruction logic
 		if (isDiagonal ||
@@ -210,11 +205,10 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 		)
 			return
 		
-		for ( tile <- world
+		world
 			.getTileEntity(x - xOffset, y, z - zOffset)
 			.as[TileGateway]
-		)
-			tile.unmarkForDispose(this.side)
+			.map { _.unmarkForDispose(this.side) }
 	}
 	
 	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int)
