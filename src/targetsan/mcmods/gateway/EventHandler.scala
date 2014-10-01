@@ -33,7 +33,7 @@ object EventHandler
 	@SubscribeEvent
 	def onChunkUnload(event: ChunkEvent.Unload): Unit =
 		if (!event.world.isRemote)
-		{ } // TODO: implement
+			ChunkWatcher.onChunkUnload(event.getChunk)
 	
     @SubscribeEvent
     def onFlintAndSteelPreUse(event: PlayerInteractEvent): Unit =

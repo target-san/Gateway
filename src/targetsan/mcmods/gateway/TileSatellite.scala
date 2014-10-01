@@ -2,7 +2,9 @@ package targetsan.mcmods.gateway
 
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.util.ChunkCoordinates
+import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.common.util.ForgeDirection
+import scala.collection.mutable
 import scala.reflect.ClassTag
 import targetsan.mcmods.gateway.connectors._
 import Utils._
@@ -34,6 +36,32 @@ class Cached[T](private val init: () => T) {
 	}
 }
 
+object ChunkWatcher {
+	private var watched = Map.empty[ChunkPos, Set[BlockPos]] withDefault { _ => Set.empty[BlockPos] }
+
+	def watchBlock(block: BlockPos, watcher: BlockPos): Unit =
+		watched += (block.chunk -> (watched(block.chunk) + watcher) )
+
+	def unwatch(watcher: BlockPos): Unit =
+		watched = watched mapValues { _ - watcher } filter { _._2.nonEmpty }
+
+	def onChunkUnload(chunk: Chunk): Unit = {
+		val pos = new ChunkPos(chunk)
+		// Get list of loaded watchers
+		val watchers = watched(pos) filter {
+				block => block.world.blockExists(block.x, block.y, block.z)
+			}
+		// Notify all of them that their watched chunk is unloaded
+		for {
+			watcher <- watchers
+			tile <- watcher.world.getTileEntity(watcher.x, watcher.y, watcher.z).as[TileSatellite]
+		}
+			tile.onWatchedChunkUnload()
+		// Leave only loaded watchers in list
+		watched += (pos -> watchers)
+	}
+}
+
 class TileSatellite extends TileEntity with ConnectorHost
 	with FluidConnector
 {
@@ -50,6 +78,25 @@ class TileSatellite extends TileEntity with ConnectorHost
 	// TODO: more fine-grained control over what's flushed here
 	def onWatchedChunkUnload(): Unit = {
 		LinkedTiles.reset()
+	}
+
+	override def invalidate(): Unit = {
+		super.invalidate()
+		unwatchLinkedTiles()
+	}
+	// Remove this tile from chunk watchers
+	override def onChunkUnload(): Unit = {
+		super.onChunkUnload()
+		unwatchLinkedTiles()
+	}
+	// This one is called only on first attempt to get linked tile
+	private def watchLinkedTiles(): Unit = {
+		for ( (_, pos) <- LinkedTileCoords)
+			ChunkWatcher.watchBlock(new BlockPos(pos, LinkedWorld), new BlockPos(this) )
+	}
+	// Called when this TE is unloaded or invalidated
+	private def unwatchLinkedTiles(): Unit = {
+		ChunkWatcher unwatch new BlockPos(this)
 	}
 
 	//******************************************************************************************************************
@@ -72,7 +119,6 @@ class TileSatellite extends TileEntity with ConnectorHost
 	//******************************************************************************************************************
 
 	private lazy val SatBlock = GatewayMod.BlockGateway.subBlock(getBlockMetadata).asInstanceOf[SubBlockSatellite]
-	private def coreTile = worldObj.getTileEntity(xCoord - SatBlock.xOffset, yCoord, zCoord - SatBlock.zOffset).asInstanceOf[TileGateway]
 
 	private lazy val LinkedSides =
 		List(
@@ -89,6 +135,7 @@ class TileSatellite extends TileEntity with ConnectorHost
 		)
 			.filter(_ != ForgeDirection.UNKNOWN)
 
+	private def coreTile = worldObj.getTileEntity(xCoord - SatBlock.xOffset, yCoord, zCoord - SatBlock.zOffset).asInstanceOf[TileGateway]
 	private lazy val LinkedWorld = coreTile.getExitWorld // Theoretically, doesn't change during single session
 	private lazy val LinkedPartnerCoords =
 		LinkedSides.map { side =>
@@ -117,13 +164,15 @@ class TileSatellite extends TileEntity with ConnectorHost
 
 	// Caches references to connected tiles. Bypasses partner satellites
 	private val LinkedTiles = new Cached(
-		() =>
+		() => {
+			watchLinkedTiles() // watch for linked tiles' chunks
 			for {
 				(side, pos) <- LinkedTileCoords
 				tile <- Option(LinkedWorld.getTileEntity(pos.posX - side.offsetX, pos.posY, pos.posZ - side.offsetZ))
 			}
 				yield (side, tile)
-		)
+		}
+	)
 	// Caches values of incoming redstone power
 	private val IncomingPower = new Cached(
 		() =>

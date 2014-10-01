@@ -3,10 +3,13 @@ package targetsan.mcmods.gateway
 import cpw.mods.fml.common.Mod
 import cpw.mods.fml.common.event.FMLInitializationEvent
 import cpw.mods.fml.common.event.FMLPostInitializationEvent
+import net.minecraft.tileentity.TileEntity
+import net.minecraft.world.World
+import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.common.MinecraftForge
 import cpw.mods.fml.common.registry.GameRegistry
 import net.minecraft.server.MinecraftServer
-import net.minecraft.util.IIcon
+import net.minecraft.util.{ChunkCoordinates, IIcon}
 import net.minecraft.entity.Entity
 
 import scala.collection.mutable.ListBuffer
@@ -35,6 +38,19 @@ object GatewayMod {
 
 object Utils
 {
+	case class ChunkPos(x: Int, z: Int, world: World) {
+		def this(chunk: Chunk) =
+			this(chunk.xPosition, chunk.zPosition, chunk.worldObj)
+	}
+	case class BlockPos(x: Int, y: Int, z: Int, world: World) {
+		def chunk = ChunkPos(x >> 4, z >> 4, world)
+
+		def this(tile: TileEntity) =
+			this(tile.xCoord, tile.yCoord, tile.zCoord, tile.getWorldObj)
+		def this(coords: ChunkCoordinates, world: World) =
+			this(coords.posX, coords.posY, coords.posZ, world)
+	}
+
 	val NetherDimensionId = -1
 	val EndDimensionId = 1
 
