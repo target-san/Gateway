@@ -8,19 +8,12 @@ import targetsan.mcmods.gateway.connectors._
 import Utils._
 
 trait ConnectorHost {
-	def tiles: Map[ForgeDirection, TileEntity]
+	def linkedSides: Seq[ForgeDirection]
 
-	def tile(side: ForgeDirection): Option[TileEntity] = tiles get side
+	def linkedTile(side: ForgeDirection): Option[TileEntity]
 
-	def tileAs[T: ClassTag](side: ForgeDirection): Option[T] =
-		tiles get side flatMap { _.as[T] }
-
-	def tilesAs[T: ClassTag]: Map[ForgeDirection, T] =
-		for {
-			(key, value) <- tiles
-			typed <- value.as[T]
-		}
-			yield (key, typed)
+	def linkedTileAs[T: ClassTag](side: ForgeDirection): Option[T] =
+		linkedTile(side) flatMap { _.as[T] }
 }
 
 /** Uses relatively cheap tag function to update heavyweight main value
@@ -47,19 +40,16 @@ class TileSatellite extends TileEntity with ConnectorHost
 	//******************************************************************************************************************
 	// Controlling cached references and notifying on their invalidation
 	//******************************************************************************************************************
-	def notifyPartnersOfTilesChanged(): Unit =
-		Partners.get map {
-			case (_, t) =>
-				t.Partners.reset()
-				t.LinkedTiles.reset()
+	def onNeighborChanged(): Unit =
+		loadedPartners foreach {
+			t =>
+				t._2.LinkedTiles.reset()
+				t._2.IncomingPower.reset()
 		}
-	// This one is invoked only from underlying block's onNeighborBlockChange
-	def notifyPartnersOfRedstoneChanged(): Unit =
-		Partners.get map { _._2.IncomingPower.reset() }
-
-	override def onChunkUnload(): Unit =
-	{
-		notifyPartnersOfTilesChanged()
+	// Flushes cached tile references, when any of them is unloaded
+	// TODO: more fine-grained control over what's flushed here
+	def onWatchedChunkUnload(): Unit = {
+		LinkedTiles.reset()
 	}
 
 	//******************************************************************************************************************
@@ -74,7 +64,8 @@ class TileSatellite extends TileEntity with ConnectorHost
 	//******************************************************************************************************************
 	// ConnectorHost support
 	//******************************************************************************************************************
-	def tiles = LinkedTiles.get
+	def linkedSides: Seq[ForgeDirection] = LinkedSides
+	def linkedTile(side: ForgeDirection) = LinkedTiles.get get side
 
 	//******************************************************************************************************************
 	// Several lazy values which don't change during tile's lifetime, but cannot be initialized in constructor
@@ -102,30 +93,29 @@ class TileSatellite extends TileEntity with ConnectorHost
 	private lazy val LinkedPartnerCoords =
 		LinkedSides.map { side =>
 			val linkedCorePos = coreTile.getExitPos
-			(side, new ChunkCoordinates(linkedCorePos.posX - 2 * side.offsetX, linkedCorePos.posY, linkedCorePos.posZ - 2 * side.offsetZ))
+			(side, new ChunkCoordinates(linkedCorePos.posX + SatBlock.xOffset - 2 * side.offsetX, linkedCorePos.posY, linkedCorePos.posZ + SatBlock.zOffset - 2 * side.offsetZ))
 		}
 		.toMap
 
 	private lazy val LinkedTileCoords =
 		for ( (side, pos) <- LinkedPartnerCoords)
 			yield (side, new ChunkCoordinates(pos.posX - side.offsetX, pos.posY - side.offsetY, pos.posZ - side.offsetZ) )
+	// All partner tiles which are loaded at the moment
+	// Used for lazy notification
+	// There's no sense in notifying unloaded partners about cache flush
+	private def loadedPartners =
+		for {
+			(side, pos) <- LinkedPartnerCoords
+			if LinkedWorld.blockExists(pos.posX, pos.posY, pos.posZ)
+			tile <- LinkedWorld.getTileEntity(pos.posX, pos.posY, pos.posZ).as[TileSatellite]
+		}
+			yield (side, tile)
 
 	//******************************************************************************************************************
 	// Connector maps, lazily constructed
-	// Should be invalidated when:
-	// 1. Redstone on the other side changes
-	// 2. Tile entity on the other
 	//******************************************************************************************************************
-	private val Partners = new Cached(
-		() => // Did this as a for-comprehension for safety - no crashes,
-			  // just connected tiles not accessible on any trouble {
-			for {
-				(side, pos) <- LinkedPartnerCoords
-				tile <- LinkedWorld.getTileEntity(pos.posX, pos.posY, pos.posZ).as[TileSatellite]
-			}
-				yield (side, tile)
-	)
 
+	// Caches references to connected tiles. Bypasses partner satellites
 	private val LinkedTiles = new Cached(
 		() =>
 			for {
@@ -134,16 +124,14 @@ class TileSatellite extends TileEntity with ConnectorHost
 			}
 				yield (side, tile)
 		)
-
+	// Caches values of incoming redstone power
 	private val IncomingPower = new Cached(
 		() =>
-			for {
-				(side, sat) <- Partners.get
-			}
+			for ( (side, pos) <- LinkedTileCoords )
 				yield (side,
-					(	sat.getWorldObj.isBlockProvidingPowerTo(sat.xCoord - side.offsetX, sat.yCoord, sat.zCoord - side.offsetZ, side.ordinal()),
-						sat.getWorldObj.getIndirectPowerLevelTo(sat.xCoord - side.offsetX, sat.yCoord, sat.zCoord - side.offsetZ, side.ordinal())
+					(	LinkedWorld.isBlockProvidingPowerTo(pos.posX, pos.posY, pos.posZ, side.ordinal()),
+						LinkedWorld.getIndirectPowerLevelTo(pos.posX, pos.posY, pos.posZ, side.ordinal())
 					)
 				)
-	)
+		)
 }

@@ -193,11 +193,11 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 	{
 		if (world.isRemote)
 			return
-		// Redstone logic, invalidate cached redstone values
+		// Notify tile that one of its neighbors has changed
 		world
 			.getTileEntity(x, y, z)
 			.as[TileSatellite]
-			.map { t => t.notifyPartnersOfTilesChanged(); t.notifyPartnersOfRedstoneChanged() }
+			.foreach { _.onNeighborChanged() }
 
 		// Deconstruction logic
 		if (isDiagonal ||
@@ -208,7 +208,7 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 		world
 			.getTileEntity(x - xOffset, y, z - zOffset)
 			.as[TileGateway]
-			.map { _.unmarkForDispose(this.side) }
+			.foreach { _.unmarkForDispose(this.side) }
 	}
 	
 	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int)
