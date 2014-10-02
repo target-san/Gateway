@@ -53,15 +53,19 @@ class BlockGateway extends BlockContainer(Material.rock)
 	
 	def cores      = subsOfType[SubBlockCore]
 	def satellites = subsOfType[SubBlockSatellite]
-	
+
+	//******************************************************************************************************************
 	// Tile entity events
+	//******************************************************************************************************************
 	override def hasTileEntity(meta: Int) =
 		subBlock(meta).hasTileEntity(meta)
 
 	override def createNewTileEntity(world: World, meta: Int) =
 		subBlock(meta).createNewTileEntity(world, meta)
 
+	//******************************************************************************************************************
 	// Block events
+	//******************************************************************************************************************
 	override def onBlockActivated(world: World, x: Int, y: Int, z: Int, player: EntityPlayer, side: Int, xTouch: Float, yTouch: Float, zTouch: Float) =
 		subBlock(world, x, y, z).onBlockActivated(world, x, y, z, player, side, xTouch, yTouch, zTouch)
 	
@@ -74,32 +78,45 @@ class BlockGateway extends BlockContainer(Material.rock)
 	override def onEntityCollidedWithBlock(world: World, x: Int, y: Int, z: Int, entity: Entity) =
 		subBlock(world, x, y, z).onEntityCollidedWithBlock(world, x, y, z, entity)
 
+	//******************************************************************************************************************
 	// Teleporter
+	//******************************************************************************************************************
 	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) =
 		subBlock(world, x, y, z).teleportEntity(world, x, y, z, entity)
-	
+
+	//******************************************************************************************************************
 	// Support for raytrace and selection box overrides
+	//******************************************************************************************************************
 	override def getSelectedBoundingBoxFromPool(world: World, x: Int, y: Int, z: Int) =
 		subBlock(world, x, y, z).getSelectedBoundingBoxFromPool(world, x, y, z)
 
 	override def collisionRayTrace(world: World, x: Int, y: Int, z: Int, startVec: Vec3, endVec: Vec3): MovingObjectPosition =
 		subBlock(world, x, y, z).collisionRayTrace(world, x, y, z, startVec, endVec)
-	
+
+	//******************************************************************************************************************
 	// Block geometry
+	//******************************************************************************************************************
 	override def getCollisionBoundingBoxFromPool(world: World, x: Int, y: Int, z: Int) =
 		subBlock(world, x, y, z).getCollisionBoundingBoxFromPool(world, x, y, z)
 
 	override def addCollisionBoxesToList(world: World, x: Int, y: Int, z: Int, mask: AxisAlignedBB, boxes: java.util.List[_], entity: Entity) =
 		subBlock(world, x, y, z).addCollisionBoxesToList(world, x, y, z, mask, boxes, entity)
-	
+
 	override def isNormalCube(world: IBlockAccess, x: Int, y: Int, z: Int): Boolean =
 		subBlock(world, x, y, z).isNormalCube(world, x, y, z)
-	
+
+	override def isSideSolid(world: IBlockAccess, x: Int, y: Int, z: Int, side: ForgeDirection): Boolean =
+		subBlock(world, x, y, z).isSideSolid(world, x, y, z, side)
+
+	//******************************************************************************************************************
 	// Light
+	//******************************************************************************************************************
 	override def getLightValue(world: IBlockAccess, x: Int, y: Int, z: Int) =
 		subBlock(world, x, y, z).getLightValue(world, x, y, z)
-	
+
+	//******************************************************************************************************************
 	// Render and other fanciness
+	//******************************************************************************************************************
 	override def randomDisplayTick(world: World, x: Int, y: Int, z: Int, random: java.util.Random) =
 		subBlock(world, x, y, z).randomDisplayTick(world, x, y, z, random)
 	
@@ -125,6 +142,9 @@ class BlockGateway extends BlockContainer(Material.rock)
 	// Redstone delegation
 	//******************************************************************************************************************
 	override def canProvidePower = true
+
+	override def shouldCheckWeakPower(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int) =
+		subBlock(world, x, y, z).shouldCheckWeakPower(world, x, y, z, side)
 
 	override def isProvidingStrongPower(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int) =
 		subBlock(world, x, y, z).isProvidingStrongPower(world, x, y, z, side)
@@ -211,13 +231,11 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 			.foreach { _.unmarkForDispose(this.side) }
 	}
 	
-	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int)
-	{
-		val tile = world
+	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int) =
+		world
 			.getTileEntity(x - xOffset, y, z - zOffset)
-		if (tile != null)
-			tile.invalidate()
-	}
+			.as[TileGateway]
+			.foreach { _.invalidate() }
 
 	override def registerBlockIcons(icons: IIconRegister)
 	{
@@ -270,8 +288,17 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 	override def getIcon(side: Int, meta: Int): IIcon = icons(side)
 
 	//******************************************************************************************************************
+	// Geometry
+	//******************************************************************************************************************
+	override def isSideSolid(world: IBlockAccess, x: Int, y: Int, z: Int, side: ForgeDirection) = true
+
+	//******************************************************************************************************************
 	// Redstone connector support
 	//******************************************************************************************************************
+	override def canProvidePower = true
+
+	override def shouldCheckWeakPower(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int) = false
+
 	override def isProvidingStrongPower(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int) =
 		world.getTileEntity(x, y, z).as[TileSatellite] map { _.getRedstoneStrongPower(ForgeDirection.getOrientation(side)) } getOrElse 0
 
@@ -292,12 +319,12 @@ class SubBlockPillar extends SubBlock(Material.air)
 		teleportEntity(world, x, y, z, entity)
 	}
 	
-	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) =
-	{
-		val below = world.getBlock(x, y - 1, z)
-		below.as[TeleportActor] foreach { _.teleportEntity(world, x, y - 1, z, entity) }
-	}
-	
+	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity): Unit =
+		world
+			.getBlock(x, y - 1, z)
+			.as[TeleportActor]
+			.foreach { _.teleportEntity(world, x, y - 1, z, entity) }
+
 	override def shouldSideBeRendered(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int): Boolean =
 		side match
 		{

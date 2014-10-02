@@ -9,6 +9,8 @@ import scala.reflect.ClassTag
 import targetsan.mcmods.gateway.connectors._
 import Utils._
 
+import scala.util.Try
+
 trait ConnectorHost {
 	def linkedSides: Seq[ForgeDirection]
 
@@ -37,10 +39,10 @@ class Cached[T](private val init: () => T) {
 }
 
 object ChunkWatcher {
-	private var watched = Map.empty[ChunkPos, Set[BlockPos]] withDefault { _ => Set.empty[BlockPos] }
+	private var watched = Map.empty[ChunkPos, Set[BlockPos]]
 
 	def watchBlock(block: BlockPos, watcher: BlockPos): Unit =
-		watched += (block.chunk -> (watched(block.chunk) + watcher) )
+		watched += (block.chunk -> (watched.getOrElse(block.chunk, Set.empty[BlockPos]) + watcher) )
 
 	def unwatch(watcher: BlockPos): Unit =
 		watched = watched mapValues { _ - watcher } filter { _._2.nonEmpty }
@@ -48,7 +50,7 @@ object ChunkWatcher {
 	def onChunkUnload(chunk: Chunk): Unit = {
 		val pos = new ChunkPos(chunk)
 		// Get list of loaded watchers
-		val watchers = watched(pos) filter {
+		val watchers = watched.getOrElse(pos, Set.empty[BlockPos]) filter {
 				block => block.world.blockExists(block.x, block.y, block.z)
 			}
 		// Notify all of them that their watched chunk is unloaded
@@ -173,14 +175,31 @@ class TileSatellite extends TileEntity with ConnectorHost
 				yield (side, tile)
 		}
 	)
+
 	// Caches values of incoming redstone power
 	private val IncomingPower = new Cached(
 		() =>
 			for ( (side, pos) <- LinkedTileCoords )
 				yield (side,
-					(	LinkedWorld.isBlockProvidingPowerTo(pos.posX, pos.posY, pos.posZ, side.ordinal()),
-						LinkedWorld.getIndirectPowerLevelTo(pos.posX, pos.posY, pos.posZ, side.ordinal())
+					(
+						new RedstoneLoop(this, LinkedWorld.isBlockProvidingPowerTo(pos.posX, pos.posY, pos.posZ, side.ordinal()) ).apply(),
+						new RedstoneLoop(this, LinkedWorld.getIndirectPowerLevelTo(pos.posX, pos.posY, pos.posZ, side.ordinal()) ).apply()
 					)
 				)
 		)
+	// Mad class which prevents us from infinite loop when recalculating redstone power
+	// If we're re-entering the same TE, it would simply return zero
+	private var isRedstoneLoop = false
+
+	private class RedstoneLoop(private val lock: TileSatellite, func: => Int) {
+		def apply(): Int = {
+			if (!lock.isRedstoneLoop) {
+				lock.isRedstoneLoop = true
+				val result = Try(func) getOrElse 0
+				lock.isRedstoneLoop = false
+				result
+			}
+			else 0
+		}
+	}
 }

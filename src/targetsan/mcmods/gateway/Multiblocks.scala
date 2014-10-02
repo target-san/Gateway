@@ -6,11 +6,10 @@ import scala.util.Try
 import scala.util.Success
 import net.minecraft.entity.player.EntityPlayer
 import scala.util.Failure
-import net.minecraft.block.BlockLiquid
+import net.minecraft.block.{Block, BlockLiquid}
 
 trait Multiblock
 {
-	protected val PortalPillarHeight = 3
 	// Perform full multiblock assembly, including construction of both endpoints
 	def assemble(world: World, x: Int, y: Int, z: Int, owner: EntityPlayer): Try[Boolean]
 	def disassemble(world: World, x: Int, y: Int, z: Int): Unit
@@ -18,6 +17,9 @@ trait Multiblock
 
 trait MultiblockImpl extends Multiblock
 {
+	protected val PortalPillarHeight = 3
+	protected def core: SubBlockCore
+
 	protected def rawAssemble(world: World, x: Int, y: Int, z: Int) =
 	{
 		// Satellite platform blocks
@@ -30,19 +32,41 @@ trait MultiblockImpl extends Multiblock
 	
 	protected def mutualInit(from: World, x1: Int, y1: Int, z1: Int, endpoint: MultiblockImpl, to: World, x2: Int, y2: Int, z2: Int, owner: EntityPlayer)
 	{
-		rawAssemble(from, x1, y1, z1)
-		endpoint.rawAssemble(to, x2, y2, z2)
-		
+		core.place(from, x1, y1, z1)
+		endpoint.core.place(to, x2, y2, z2)
+		// Place and initialize cores before satellite blocks.
+		// Because cores are kind of self-sufficient, but satellites are not
 		val core1 = from.getTileEntity(x1, y1, z1).asInstanceOf[TileGateway]
 		val core2 = to.getTileEntity(x2, y2, z2).asInstanceOf[TileGateway]
-		
+
 		core1.init(core2, owner)
 		core2.init(core1, owner)
+
+		rawAssemble(from, x1, y1, z1)
+		endpoint.rawAssemble(to, x2, y2, z2)
 	}
+	// Provides blocks which replace
+	protected def platformReplacement(dx: Int, dz: Int): Block
+
+	override def disassemble(world: World, x: Int, y: Int, z: Int): Unit = {
+		// dispose pillar
+		for ( y <- (y + 1) to (y + PortalPillarHeight) )
+			if (world.getBlock(x, y, z) == GatewayMod.BlockGateway)
+				world.setBlockToAir(x, y, z)
+		// dispose platform
+		for ((_, sat) <- GatewayMod.BlockGateway.satellites)
+			world
+				.setBlock(x + sat.xOffset, y, z + sat.zOffset, platformReplacement(sat.xOffset, sat.zOffset))
+		// dispose core
+		world.setBlock(x, y, z, platformReplacement(0, 0))
+	}
+
 }
 /// The simplest version - 3x3, obsidian on corners, glass on sides, redstone block in center
 object RedstoneCoreMultiblock extends MultiblockImpl
 {
+	override def core = GatewayMod.BlockGateway.RedstoneCore
+
 	override def assemble(world: World, x: Int, y: Int, z: Int, owner: EntityPlayer): Try[Boolean] =
 	{
 		val to = Utils.interDimension
@@ -65,31 +89,17 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 		}
 	}
 
-	override def disassemble(world: World, x: Int, y: Int, z: Int) =
-	{
-		// dispose pillar
-		for ( y <- (y + 1) to (y + PortalPillarHeight) )
-			if (world.getBlock(x, y, z) == GatewayMod.BlockGateway)
-				world.setBlockToAir(x, y, z)
-		// dispose core
-		world.setBlock(x, y, z, Blocks.netherrack)
-		// dispose platform
-		for ((_, sat) <- GatewayMod.BlockGateway.satellites)
-			world
-				.setBlock(
-					x + sat.xOffset, y, z + sat.zOffset,
-					if (sat.isDiagonal) Blocks.obsidian else Blocks.gravel
-				)
-	}
-	
-	override def rawAssemble(world: World, x: Int, y: Int, z: Int)
-	{
-		// Core
-		GatewayMod.BlockGateway.RedstoneCore.place(world, x, y, z)
-		// main platform and pillar
-		super.rawAssemble(world, x, y, z)
-	}
-	
+	override def platformReplacement(dx: Int, dz: Int) =
+		(dx, dz) match {
+			case (0, 0) => Blocks.netherrack
+			case (x, z) if x == 0 || z == 0 => Blocks.gravel
+			case _ => Blocks.obsidian
+		}
+
+	//******************************************************************************************************************
+	// Calculation of exit position
+	//******************************************************************************************************************
+
 	private def translatePoint(from: World, x: Int, y: Int, z: Int, to: World): (Int, Int, Int) =
 	{
 		def mapCoord(c: Int) = Math.floor(c * from.provider.getMovementFactor / to.provider.getMovementFactor).toInt
@@ -275,14 +285,12 @@ object RedstoneCoreMultiblock extends MultiblockImpl
 
 object NetherMultiblock extends MultiblockImpl
 {
+	override def core = GatewayMod.BlockGateway.MirrorCore
 	// prevents from using this as standalone multiblock
 	override def assemble(world: World, x: Int, y: Int, z: Int, owner: EntityPlayer): Try[Boolean] = Success(false)
 
 	override def rawAssemble(world: World, x: Int, y: Int, z: Int) =
 	{
-		// Core
-		GatewayMod.BlockGateway.MirrorCore.place(world, x, y, z)
-		
 		// main platform and pillar
 		super.rawAssemble(world, x, y, z)
 		// Air around pillar
@@ -295,16 +303,7 @@ object NetherMultiblock extends MultiblockImpl
 				world.setBlock(x, y, z, Blocks.stone)
 	}
 
-	override def disassemble(world: World, x: Int, y: Int, z: Int) =
-	{
-		// dispose pillar
-		for ( y <- (y + 1) to (y + PortalPillarHeight) )
-			if (world.getBlock(x, y, z) == GatewayMod.BlockGateway)
-				world.setBlockToAir(x, y, z)
-		// dispose platform
-		for ((x, y, z) <- Utils.enumVolume(x - 1, y, z - 1, x + 1, y, z + 1))
-			world.setBlock(x, y, z, Blocks.netherrack)
-		// dispose core
-		world.setBlock(x, y, z, Blocks.obsidian)
-	}
+	override def platformReplacement(dx: Int, dz: Int) =
+		if (dx == 0 && dz == 0) Blocks.obsidian
+		else Blocks.netherrack
 }

@@ -102,7 +102,11 @@ class TileGateway extends TileEntity {
 		// Swithc to disposal cycle
 		state = Disposing
 		// Remove multiblock here
-		GatewayMod.BlockGateway.cores(metadata).multiblock.disassemble(worldObj, xCoord, yCoord, zCoord)
+		GatewayMod
+			.BlockGateway
+			.cores(metadata)
+			.multiblock
+			.disassemble(worldObj, xCoord, yCoord, zCoord)
 		// This would trigger removal of the gateway's endpoint located on the other side
 		exitWorld
 			.getTileEntity(exitPos.posX, exitPos.posY, exitPos.posZ)
@@ -164,7 +168,7 @@ class TileGateway extends TileEntity {
 		exitWorld = Utils.world(endpoint.worldObj.provider.dimensionId)
 		owner = player.getGameProfile.getId
 		ownerName = player.getGameProfile.getName
-		// NB: assemble isn't used here. Because multiblock should be already constructed by the time TE is initialized
+		// NB: assemble isn't used here. Multiblock construction isn't the responsibility of TE
 		markDirty()
 		metadata = getBlockMetadata
 	}
