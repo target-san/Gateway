@@ -39,26 +39,23 @@ class Cached[T](private val init: () => T) {
 }
 
 object ChunkWatcher {
-	private var watched = Map.empty[ChunkPos, Set[BlockPos]]
+	private var watched = Map.empty[ChunkPos, Set[(BlockPos, () => Unit)]]
 
-	def watchBlock(block: BlockPos, watcher: BlockPos): Unit =
-		watched += (block.chunk -> (watched.getOrElse(block.chunk, Set.empty[BlockPos]) + watcher) )
+	def watchBlock(block: BlockPos, watcher: BlockPos, onUnload: () => Unit): Unit =
+		watched += (block.chunk -> (watched.getOrElse(block.chunk, Set.empty) + (watcher -> onUnload)) )
 
 	def unwatch(watcher: BlockPos): Unit =
-		watched = watched mapValues { _ - watcher } filter { _._2.nonEmpty }
+		watched = watched mapValues { _ filter { _._1 != watcher} } filter { _._2.nonEmpty }
 
 	def onChunkUnload(chunk: Chunk): Unit = {
 		val pos = new ChunkPos(chunk)
 		// Get list of loaded watchers
-		val watchers = watched.getOrElse(pos, Set.empty[BlockPos]) filter {
-				block => block.world.blockExists(block.x, block.y, block.z)
+		val watchers = watched.getOrElse(pos, Set.empty) filter {
+				case (block, _) => block.world.blockExists(block.x, block.y, block.z)
 			}
 		// Notify all of them that their watched chunk is unloaded
-		for {
-			watcher <- watchers
-			tile <- watcher.world.getTileEntity(watcher.x, watcher.y, watcher.z).as[TileSatellite]
-		}
-			tile.onWatchedChunkUnload()
+		for ( (watcher, onUnload) <- watchers )
+			onUnload()
 		// Leave only loaded watchers in list
 		watched += (pos -> watchers)
 	}
@@ -68,60 +65,19 @@ class TileSatellite extends TileEntity with ConnectorHost
 	with FluidConnector
 {
 	//******************************************************************************************************************
-	// Controlling cached references and notifying on their invalidation
-	//******************************************************************************************************************
-	def onNeighborChanged(): Unit =
-		loadedPartners foreach {
-			t =>
-				t._2.LinkedTiles.reset()
-				t._2.IncomingPower.reset()
-		}
-	// Flushes cached tile references, when any of them is unloaded
-	// TODO: more fine-grained control over what's flushed here
-	def onWatchedChunkUnload(): Unit = {
-		LinkedTiles.reset()
-	}
-
-	override def invalidate(): Unit = {
-		super.invalidate()
-		unwatchLinkedTiles()
-	}
-	// Remove this tile from chunk watchers
-	override def onChunkUnload(): Unit = {
-		super.onChunkUnload()
-		unwatchLinkedTiles()
-	}
-	// This one is called only on first attempt to get linked tile
-	private def watchLinkedTiles(): Unit = {
-		for ( (_, pos) <- LinkedTileCoords)
-			ChunkWatcher.watchBlock(new BlockPos(pos, LinkedWorld), new BlockPos(this) )
-	}
-	// Called when this TE is unloaded or invalidated
-	private def unwatchLinkedTiles(): Unit = {
-		ChunkWatcher unwatch new BlockPos(this)
-	}
-
-	//******************************************************************************************************************
-	// Redstone support
-	// Not in trait because references IncomingPower
-	//******************************************************************************************************************
-	def getRedstoneStrongPower(side: ForgeDirection): Int =
-		IncomingPower.get get side map { _._1 } getOrElse 0
-	def getRedstoneWeakPower(side: ForgeDirection): Int =
-		IncomingPower.get get side map { _._2 } getOrElse 0
-
-	//******************************************************************************************************************
-	// ConnectorHost support
-	//******************************************************************************************************************
-	def linkedSides: Seq[ForgeDirection] = LinkedSides
-	def linkedTile(side: ForgeDirection) = LinkedTiles.get get side
-
-	//******************************************************************************************************************
-	// Several lazy values which don't change during tile's lifetime, but cannot be initialized in constructor
+	// Satellite's context, lazily resolved, not persisted
 	//******************************************************************************************************************
 
+	// Satellite block type
+	// context-internal
 	private lazy val SatBlock = GatewayMod.BlockGateway.subBlock(getBlockMetadata).asInstanceOf[SubBlockSatellite]
+	// Core TE's reference, not stored at the moment
+	// context-internal
+	private def coreTile = worldObj.getTileEntity(xCoord - SatBlock.xOffset, yCoord, zCoord - SatBlock.zOffset).asInstanceOf[TileGateway]
 
+	// Context values used in other parts and displayed outside
+
+	// Sides which link through gateway
 	private lazy val LinkedSides =
 		List(
 			SatBlock.xOffset match {
@@ -136,70 +92,89 @@ class TileSatellite extends TileEntity with ConnectorHost
 			}
 		)
 			.filter(_ != ForgeDirection.UNKNOWN)
-
-	private def coreTile = worldObj.getTileEntity(xCoord - SatBlock.xOffset, yCoord, zCoord - SatBlock.zOffset).asInstanceOf[TileGateway]
+	// Destination world for this gateway
 	private lazy val LinkedWorld = coreTile.getExitWorld // Theoretically, doesn't change during single session
+	// Coordinates of partner satellites linked to this one, mapped by side
 	private lazy val LinkedPartnerCoords =
 		LinkedSides.map { side =>
 			val linkedCorePos = coreTile.getExitPos
 			(side, new ChunkCoordinates(linkedCorePos.posX + SatBlock.xOffset - 2 * side.offsetX, linkedCorePos.posY, linkedCorePos.posZ + SatBlock.zOffset - 2 * side.offsetZ))
 		}
-		.toMap
-
+			.toMap
+	// Coordinates of directly linked tile entities
 	private lazy val LinkedTileCoords =
 		for ( (side, pos) <- LinkedPartnerCoords)
-			yield (side, new ChunkCoordinates(pos.posX - side.offsetX, pos.posY - side.offsetY, pos.posZ - side.offsetZ) )
-	// All partner tiles which are loaded at the moment
-	// Used for lazy notification
-	// There's no sense in notifying unloaded partners about cache flush
-	private def loadedPartners =
+		yield (side, new ChunkCoordinates(pos.posX - side.offsetX, pos.posY - side.offsetY, pos.posZ - side.offsetZ) )
+
+	//******************************************************************************************************************
+	// Controlling cached references and notifying on their invalidation
+	//******************************************************************************************************************
+
+	// One of neighbor blocks has changed
+	// Check all loaded partners and notify them
+	def onNeighborChanged(): Unit =
+		if (!worldObj.isRemote)
 		for {
 			(side, pos) <- LinkedPartnerCoords
 			if LinkedWorld.blockExists(pos.posX, pos.posY, pos.posZ)
 			tile <- LinkedWorld.getTileEntity(pos.posX, pos.posY, pos.posZ).as[TileSatellite]
 		}
-			yield (side, tile)
+			tile.onPartnerNeighborChanged(side.getOpposite)
+	// Specified sided partner's neighbor has changed; partner function for onNeighborChanged
+	private def onPartnerNeighborChanged(side: ForgeDirection): Unit = {
+		LinkedTiles get side foreach { _.reset() }
+		// Transfer change notification to corresponding linked block
+		worldObj.notifyBlockOfNeighborChange(xCoord + side.offsetX, yCoord + side.offsetY, zCoord + side.offsetZ, getBlockType)
+	}
+
+	override def invalidate(): Unit = {
+		super.invalidate()
+		unwatchLinkedTiles()
+	}
+	// Remove this tile from chunk watchers
+	override def onChunkUnload(): Unit = {
+		super.onChunkUnload()
+		unwatchLinkedTiles()
+	}
+
+	// This one is called only on first attempt to get linked tile
+	private def watchLinkedTiles(): Unit =
+		for ( (side, pos) <- LinkedTileCoords)
+			ChunkWatcher.watchBlock(
+				new BlockPos(pos, LinkedWorld),
+				new BlockPos(this),
+				() => LinkedTiles get side foreach { _.reset() }
+			)
+	// Called when this TE is unloaded or invalidated
+	private def unwatchLinkedTiles(): Unit = {
+		ChunkWatcher unwatch new BlockPos(this)
+	}
+
+	//******************************************************************************************************************
+	// Redstone support
+	// Not in trait because references IncomingPower
+	//******************************************************************************************************************
+	def getRedstoneStrongPower(side: ForgeDirection): Int = 0
+	def getRedstoneWeakPower(side: ForgeDirection): Int = 0
+
+	//******************************************************************************************************************
+	// ConnectorHost support
+	//******************************************************************************************************************
+	def linkedSides: Seq[ForgeDirection] = LinkedSides
+	def linkedTile(side: ForgeDirection) = LinkedTiles get side flatMap { _.get }
 
 	//******************************************************************************************************************
 	// Connector maps, lazily constructed
 	//******************************************************************************************************************
 
 	// Caches references to connected tiles. Bypasses partner satellites
-	private val LinkedTiles = new Cached(
-		() => {
-			watchLinkedTiles() // watch for linked tiles' chunks
-			for {
-				(side, pos) <- LinkedTileCoords
-				tile <- Option(LinkedWorld.getTileEntity(pos.posX - side.offsetX, pos.posY, pos.posZ - side.offsetZ))
-			}
-				yield (side, tile)
-		}
-	)
-
-	// Caches values of incoming redstone power
-	private val IncomingPower = new Cached(
-		() =>
-			for ( (side, pos) <- LinkedTileCoords )
-				yield (side,
-					(
-						new RedstoneLoop(this, LinkedWorld.isBlockProvidingPowerTo(pos.posX, pos.posY, pos.posZ, side.ordinal()) ).apply(),
-						new RedstoneLoop(this, LinkedWorld.getIndirectPowerLevelTo(pos.posX, pos.posY, pos.posZ, side.ordinal()) ).apply()
-					)
+	private lazy val LinkedTiles = {
+		watchLinkedTiles() // watch for linked tiles' chunks, needed only once per this tile's lifecycle
+		for ((side, pos) <- LinkedTileCoords)
+			yield (side,
+				new Cached(
+					() => Option(LinkedWorld.getTileEntity(pos.posX - side.offsetX, pos.posY, pos.posZ - side.offsetZ))
 				)
-		)
-	// Mad class which prevents us from infinite loop when recalculating redstone power
-	// If we're re-entering the same TE, it would simply return zero
-	private var isRedstoneLoop = false
-
-	private class RedstoneLoop(private val lock: TileSatellite, func: => Int) {
-		def apply(): Int = {
-			if (!lock.isRedstoneLoop) {
-				lock.isRedstoneLoop = true
-				val result = Try(func) getOrElse 0
-				lock.isRedstoneLoop = false
-				result
-			}
-			else 0
-		}
+			)
 	}
 }
