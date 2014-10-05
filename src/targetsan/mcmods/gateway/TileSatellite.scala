@@ -1,27 +1,21 @@
 package targetsan.mcmods.gateway
 
+import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.tileentity.TileEntity
-import net.minecraft.util.ChunkCoordinates
 import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.common.util.ForgeDirection
-import scala.collection.mutable
+
+import targetsan.mcmods.gateway.Utils._
+import targetsan.mcmods.gateway.linkers._
+
 import scala.reflect.ClassTag
-import targetsan.mcmods.gateway.connectors._
-import Utils._
 
-import scala.util.Try
-
-trait ConnectorHost {
-	def linkedSides: Seq[ForgeDirection]
-
-	def linkedTile(side: ForgeDirection): Option[TileEntity]
-
-	def linkedTileAs[T: ClassTag](side: ForgeDirection): Option[T] =
-		linkedTile(side) flatMap { _.as[T] }
+trait TileLinker {
+	def tileAs[T: ClassTag](side: ForgeDirection): Option[T]
 }
 
-/** Uses relatively cheap tag function to update heavyweight main value
- *  Used to retrieve connected tiles at most once per tick
+/** Resettable lazy value
+ *  Used to retrieve connected tiles only when they're invalidated
  */
 class Cached[T](private val init: () => T) {
 	private var value: Option[T] = None
@@ -54,15 +48,15 @@ object ChunkWatcher {
 				case (block, _) => block.world.blockExists(block.x, block.y, block.z)
 			}
 		// Notify all of them that their watched chunk is unloaded
-		for ( (watcher, onUnload) <- watchers )
-			onUnload()
+		watchers foreach { _._2() }
 		// Leave only loaded watchers in list
 		watched += (pos -> watchers)
 	}
 }
 
-class TileSatellite extends TileEntity with ConnectorHost
-	with FluidConnector
+class TileSatellite extends TileEntity with TileLinker
+	with FluidLinker
+	with RedstoneLinker
 {
 	//******************************************************************************************************************
 	// Satellite's context, lazily resolved, not persisted
@@ -71,10 +65,6 @@ class TileSatellite extends TileEntity with ConnectorHost
 	// Satellite block type
 	// context-internal
 	private lazy val SatBlock = GatewayMod.BlockGateway.subBlock(getBlockMetadata).asInstanceOf[SubBlockSatellite]
-	// Core TE's reference, not stored at the moment
-	// context-internal
-	private def coreTile = worldObj.getTileEntity(xCoord - SatBlock.xOffset, yCoord, zCoord - SatBlock.zOffset).asInstanceOf[TileGateway]
-
 	// Context values used in other parts and displayed outside
 
 	// Sides which link through gateway
@@ -92,19 +82,19 @@ class TileSatellite extends TileEntity with ConnectorHost
 			}
 		)
 			.filter(_ != ForgeDirection.UNKNOWN)
-	// Destination world for this gateway
-	private lazy val LinkedWorld = coreTile.getExitWorld // Theoretically, doesn't change during single session
 	// Coordinates of partner satellites linked to this one, mapped by side
 	private lazy val LinkedPartnerCoords =
 		LinkedSides.map { side =>
+			val coreTile = worldObj.getTileEntity(xCoord - SatBlock.xOffset, yCoord, zCoord - SatBlock.zOffset).asInstanceOf[TileGateway]
 			val linkedCorePos = coreTile.getExitPos
-			(side, new ChunkCoordinates(linkedCorePos.posX + SatBlock.xOffset - 2 * side.offsetX, linkedCorePos.posY, linkedCorePos.posZ + SatBlock.zOffset - 2 * side.offsetZ))
+			val linkedWorld = coreTile.getExitWorld
+			(side, new BlockPos(linkedCorePos.posX + SatBlock.xOffset - 2 * side.offsetX, linkedCorePos.posY, linkedCorePos.posZ + SatBlock.zOffset - 2 * side.offsetZ, linkedWorld))
 		}
 			.toMap
 	// Coordinates of directly linked tile entities
 	private lazy val LinkedTileCoords =
 		for ( (side, pos) <- LinkedPartnerCoords)
-		yield (side, new ChunkCoordinates(pos.posX - side.offsetX, pos.posY - side.offsetY, pos.posZ - side.offsetZ) )
+		yield (side, new BlockPos(pos.x - side.offsetX, pos.y - side.offsetY, pos.z - side.offsetZ, pos.world) )
 
 	//******************************************************************************************************************
 	// Controlling cached references and notifying on their invalidation
@@ -116,13 +106,15 @@ class TileSatellite extends TileEntity with ConnectorHost
 		if (!worldObj.isRemote)
 		for {
 			(side, pos) <- LinkedPartnerCoords
-			if LinkedWorld.blockExists(pos.posX, pos.posY, pos.posZ)
-			tile <- LinkedWorld.getTileEntity(pos.posX, pos.posY, pos.posZ).as[TileSatellite]
+			if pos.world.blockExists(pos.x, pos.y, pos.z)
+			tile <- pos.world.getTileEntity(pos.x, pos.y, pos.z).as[TileSatellite]
 		}
 			tile.onPartnerNeighborChanged(side.getOpposite)
 	// Specified sided partner's neighbor has changed; partner function for onNeighborChanged
 	private def onPartnerNeighborChanged(side: ForgeDirection): Unit = {
 		LinkedTiles get side foreach { _.reset() }
+		// Re-read redstone
+		readPartnerInput(side)
 		// Transfer change notification to corresponding linked block
 		worldObj.notifyBlockOfNeighborChange(xCoord + side.offsetX, yCoord + side.offsetY, zCoord + side.offsetZ, getBlockType)
 	}
@@ -141,7 +133,7 @@ class TileSatellite extends TileEntity with ConnectorHost
 	private def watchLinkedTiles(): Unit =
 		for ( (side, pos) <- LinkedTileCoords)
 			ChunkWatcher.watchBlock(
-				new BlockPos(pos, LinkedWorld),
+				pos,
 				new BlockPos(this),
 				() => LinkedTiles get side foreach { _.reset() }
 			)
@@ -151,17 +143,29 @@ class TileSatellite extends TileEntity with ConnectorHost
 	}
 
 	//******************************************************************************************************************
-	// Redstone support
-	// Not in trait because references IncomingPower
+	// State persistence
 	//******************************************************************************************************************
-	def getRedstoneStrongPower(side: ForgeDirection): Int = 0
-	def getRedstoneWeakPower(side: ForgeDirection): Int = 0
+	override def readFromNBT(tag: NBTTagCompound): Unit = {
+		super.readFromNBT(tag)
+		loadRedstone(tag)
+	}
+
+	override def writeToNBT(tag: NBTTagCompound): Unit = {
+		super.writeToNBT(tag)
+		saveRedstone(tag)
+	}
 
 	//******************************************************************************************************************
-	// ConnectorHost support
+	// TileLinker support
 	//******************************************************************************************************************
-	def linkedSides: Seq[ForgeDirection] = LinkedSides
-	def linkedTile(side: ForgeDirection) = LinkedTiles get side flatMap { _.get }
+	def tileAs[T: ClassTag](side: ForgeDirection): Option[T] = LinkedTiles get side flatMap { _.get } flatMap { _.as[T] }
+
+	//******************************************************************************************************************
+	// RedstoneLinker support
+	//******************************************************************************************************************
+
+	override protected def linkedSides = LinkedSides
+	override protected def linkedTileCoords = LinkedTileCoords
 
 	//******************************************************************************************************************
 	// Connector maps, lazily constructed
@@ -173,7 +177,7 @@ class TileSatellite extends TileEntity with ConnectorHost
 		for ((side, pos) <- LinkedTileCoords)
 			yield (side,
 				new Cached(
-					() => Option(LinkedWorld.getTileEntity(pos.posX - side.offsetX, pos.posY, pos.posZ - side.offsetZ))
+					() => Option(pos.world.getTileEntity(pos.x - side.offsetX, pos.y, pos.z - side.offsetZ))
 				)
 			)
 	}
