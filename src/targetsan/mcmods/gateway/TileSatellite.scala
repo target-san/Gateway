@@ -55,8 +55,8 @@ object ChunkWatcher {
 }
 
 class TileSatellite extends TileEntity with TileLinker
+	with RedstoneLinker // semi-intrusive, requires minor coupling
 	with FluidLinker
-	with RedstoneLinker
 {
 	//******************************************************************************************************************
 	// Satellite's context, lazily resolved, not persisted
@@ -114,7 +114,7 @@ class TileSatellite extends TileEntity with TileLinker
 	private def onPartnerNeighborChanged(side: ForgeDirection): Unit = {
 		LinkedTiles get side foreach { _.reset() }
 		// Re-read redstone
-		readPartnerInput(side)
+		readPartnerInput(side) // RedstoneLinker
 		// Transfer change notification to corresponding linked block
 		worldObj.notifyBlockOfNeighborChange(xCoord + side.offsetX, yCoord + side.offsetY, zCoord + side.offsetZ, getBlockType)
 	}
@@ -147,12 +147,12 @@ class TileSatellite extends TileEntity with TileLinker
 	//******************************************************************************************************************
 	override def readFromNBT(tag: NBTTagCompound): Unit = {
 		super.readFromNBT(tag)
-		loadRedstone(tag)
+		loadRedstone(tag) // RedstoneLinker
 	}
 
 	override def writeToNBT(tag: NBTTagCompound): Unit = {
 		super.writeToNBT(tag)
-		saveRedstone(tag)
+		saveRedstone(tag) // RedstoneLinker
 	}
 
 	//******************************************************************************************************************
