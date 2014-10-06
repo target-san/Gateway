@@ -1,6 +1,5 @@
 package targetsan.mcmods.gateway
 
-import cpw.mods.fml.common.Mod
 import net.minecraft.block.Block
 import net.minecraft.block.BlockContainer
 import net.minecraft.block.material.Material
@@ -286,25 +285,6 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 	}
 	
 	override def getIcon(side: Int, meta: Int): IIcon = icons(side)
-
-	//******************************************************************************************************************
-	// Geometry
-	//******************************************************************************************************************
-	override def isSideSolid(world: IBlockAccess, x: Int, y: Int, z: Int, side: ForgeDirection) = true
-
-	//******************************************************************************************************************
-	// Redstone connector support
-	//******************************************************************************************************************
-	override def canProvidePower = true
-
-	override def shouldCheckWeakPower(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int) = false
-
-	override def isProvidingStrongPower(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int) =
-		world.getTileEntity(x, y, z).as[TileSatellite] map { _.getRedstoneStrongPower(ForgeDirection.getOrientation(side)) } getOrElse 0
-
-
-	override def isProvidingWeakPower(world: IBlockAccess, x: Int, y: Int, z: Int, side: Int) =
-		world.getTileEntity(x, y, z).as[TileSatellite] map { _.getRedstoneWeakPower(ForgeDirection.getOrientation(side)) } getOrElse 0
 }
 
 class SubBlockPillar extends SubBlock(Material.air)

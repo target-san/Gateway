@@ -17,14 +17,11 @@ buildscript {
 }
 
 allprojects {
-	// everything should now build in root build folder
-	buildDir new File( new File(rootProject.projectDir, "build"), project.name)
 	// plugins
 	apply plugin: "scala"
 	apply plugin: "forge"
 
 	sourceSets.main {
-       	def root = project.projectDir // .parentFile
        	java {
            	srcDirs 'src'
        	}
@@ -43,6 +40,9 @@ allprojects {
 
 
 subprojects {
+	// Subprojects are built in 'build' folder hierarchically, according to their location
+	buildDir new File( new File(rootProject.projectDir, "build"), project.name)
+
 	version = "1.0"
 	group = 'api'
 	archivesBaseName = 'api-' + project.projectDir.name
