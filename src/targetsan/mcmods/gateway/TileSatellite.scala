@@ -1,12 +1,10 @@
 package targetsan.mcmods.gateway
 
-import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.common.util.ForgeDirection
 
 import targetsan.mcmods.gateway.Utils._
-import targetsan.mcmods.gateway.linkers._
 
 import scala.reflect.ClassTag
 
@@ -55,8 +53,6 @@ object ChunkWatcher {
 }
 
 class TileSatellite extends TileEntity with TileLinker
-	with FluidLinker
-	with RedstoneLinker
 {
 	//******************************************************************************************************************
 	// Satellite's context, lazily resolved, not persisted
@@ -113,8 +109,6 @@ class TileSatellite extends TileEntity with TileLinker
 	// Specified sided partner's neighbor has changed; partner function for onNeighborChanged
 	private def onPartnerNeighborChanged(side: ForgeDirection): Unit = {
 		LinkedTiles get side foreach { _.reset() }
-		// Re-read redstone
-		readPartnerInput(side)
 		// Transfer change notification to corresponding linked block
 		worldObj.notifyBlockOfNeighborChange(xCoord + side.offsetX, yCoord + side.offsetY, zCoord + side.offsetZ, getBlockType)
 	}
@@ -143,29 +137,9 @@ class TileSatellite extends TileEntity with TileLinker
 	}
 
 	//******************************************************************************************************************
-	// State persistence
-	//******************************************************************************************************************
-	override def readFromNBT(tag: NBTTagCompound): Unit = {
-		super.readFromNBT(tag)
-		loadRedstone(tag)
-	}
-
-	override def writeToNBT(tag: NBTTagCompound): Unit = {
-		super.writeToNBT(tag)
-		saveRedstone(tag)
-	}
-
-	//******************************************************************************************************************
 	// TileLinker support
 	//******************************************************************************************************************
 	def tileAs[T: ClassTag](side: ForgeDirection): Option[T] = LinkedTiles get side flatMap { _.get } flatMap { _.as[T] }
-
-	//******************************************************************************************************************
-	// RedstoneLinker support
-	//******************************************************************************************************************
-
-	override protected def linkedSides = LinkedSides
-	override protected def linkedTileCoords = LinkedTileCoords
 
 	//******************************************************************************************************************
 	// Connector maps, lazily constructed
