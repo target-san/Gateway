@@ -100,21 +100,28 @@ class TileSatellite extends TileEntity with TileLinker
 	// Controlling cached references and notifying on their invalidation
 	//******************************************************************************************************************
 
-	// One of neighbor blocks has changed
-	// Check all loaded partners and notify them
-	def onNeighborChanged(): Unit =
-		if (!worldObj.isRemote)
+	private def loadedPartners =
 		for {
 			(side, pos) <- LinkedPartnerCoords
 			if pos.world.blockExists(pos.x, pos.y, pos.z)
 			tile <- pos.world.getTileEntity(pos.x, pos.y, pos.z).as[TileSatellite]
 		}
-			tile.onPartnerNeighborChanged(side.getOpposite)
+			yield (side, tile)
+	// One of neighbor blocks has changed
+	// Check all loaded partners and notify them
+	def onNeighborChanged(): Unit =
+		if (!worldObj.isRemote) {
+			// Re-read redstone inputs
+			for (side <- LinkedSides)
+				readPowerInput(side)
+			// Notify all loaded partners about change
+			for ( (side, tile) <- loadedPartners )
+				tile.onPartnerNeighborChanged(side.getOpposite)
+		}
 	// Specified sided partner's neighbor has changed; partner function for onNeighborChanged
 	private def onPartnerNeighborChanged(side: ForgeDirection): Unit = {
+		onPartnerRedstoneChanged(side) // RedstoneLinker
 		LinkedTiles get side foreach { _.reset() }
-		// Re-read redstone
-		readPartnerInput(side) // RedstoneLinker
 		// Transfer change notification to corresponding linked block
 		worldObj.notifyBlockOfNeighborChange(xCoord + side.offsetX, yCoord + side.offsetY, zCoord + side.offsetZ, getBlockType)
 	}
@@ -127,10 +134,14 @@ class TileSatellite extends TileEntity with TileLinker
 	override def onChunkUnload(): Unit = {
 		super.onChunkUnload()
 		unwatchLinkedTiles()
+		// RedstoneLinker: notify loaded partners that they would need to re-read partner reference
+		for ( (side, tile) <- loadedPartners )
+			tile.onPartnerUnload(side.getOpposite)
 	}
 
 	// This one is called only on first attempt to get linked tile
 	private def watchLinkedTiles(): Unit =
+		if (!worldObj.isRemote)
 		for ( (side, pos) <- LinkedTileCoords)
 			ChunkWatcher.watchBlock(
 				pos,
@@ -138,9 +149,9 @@ class TileSatellite extends TileEntity with TileLinker
 				() => LinkedTiles get side foreach { _.reset() }
 			)
 	// Called when this TE is unloaded or invalidated
-	private def unwatchLinkedTiles(): Unit = {
-		ChunkWatcher unwatch new BlockPos(this)
-	}
+	private def unwatchLinkedTiles(): Unit =
+		if (!worldObj.isRemote)
+			ChunkWatcher unwatch new BlockPos(this)
 
 	//******************************************************************************************************************
 	// State persistence
@@ -165,7 +176,10 @@ class TileSatellite extends TileEntity with TileLinker
 	//******************************************************************************************************************
 
 	override protected def linkedSides = LinkedSides
-	override protected def linkedTileCoords = LinkedTileCoords
+
+	private lazy val ThisBlockPos = BlockPos(xCoord, yCoord, zCoord, worldObj)
+	override protected def thisBlock = ThisBlockPos
+	override protected def linkedPartnerCoords = LinkedPartnerCoords
 
 	//******************************************************************************************************************
 	// Connector maps, lazily constructed
