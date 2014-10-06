@@ -55,8 +55,8 @@ object ChunkWatcher {
 }
 
 class TileSatellite extends TileEntity with TileLinker
-	with RedstoneLinker // semi-intrusive, requires minor coupling
 	with FluidLinker
+	with RedstoneLinker
 {
 	//******************************************************************************************************************
 	// Satellite's context, lazily resolved, not persisted
@@ -100,28 +100,21 @@ class TileSatellite extends TileEntity with TileLinker
 	// Controlling cached references and notifying on their invalidation
 	//******************************************************************************************************************
 
-	private def loadedPartners =
+	// One of neighbor blocks has changed
+	// Check all loaded partners and notify them
+	def onNeighborChanged(): Unit =
+		if (!worldObj.isRemote)
 		for {
 			(side, pos) <- LinkedPartnerCoords
 			if pos.world.blockExists(pos.x, pos.y, pos.z)
 			tile <- pos.world.getTileEntity(pos.x, pos.y, pos.z).as[TileSatellite]
 		}
-			yield (side, tile)
-	// One of neighbor blocks has changed
-	// Check all loaded partners and notify them
-	def onNeighborChanged(): Unit =
-		if (!worldObj.isRemote) {
-			// Re-read redstone inputs
-			for (side <- LinkedSides)
-				readPowerInput(side)
-			// Notify all loaded partners about change
-			for ( (side, tile) <- loadedPartners )
-				tile.onPartnerNeighborChanged(side.getOpposite)
-		}
+			tile.onPartnerNeighborChanged(side.getOpposite)
 	// Specified sided partner's neighbor has changed; partner function for onNeighborChanged
 	private def onPartnerNeighborChanged(side: ForgeDirection): Unit = {
-		onPartnerRedstoneChanged(side) // RedstoneLinker
 		LinkedTiles get side foreach { _.reset() }
+		// Re-read redstone
+		readPartnerInput(side)
 		// Transfer change notification to corresponding linked block
 		worldObj.notifyBlockOfNeighborChange(xCoord + side.offsetX, yCoord + side.offsetY, zCoord + side.offsetZ, getBlockType)
 	}
@@ -134,14 +127,10 @@ class TileSatellite extends TileEntity with TileLinker
 	override def onChunkUnload(): Unit = {
 		super.onChunkUnload()
 		unwatchLinkedTiles()
-		// RedstoneLinker: notify loaded partners that they would need to re-read partner reference
-		for ( (side, tile) <- loadedPartners )
-			tile.onPartnerUnload(side.getOpposite)
 	}
 
 	// This one is called only on first attempt to get linked tile
 	private def watchLinkedTiles(): Unit =
-		if (!worldObj.isRemote)
 		for ( (side, pos) <- LinkedTileCoords)
 			ChunkWatcher.watchBlock(
 				pos,
@@ -149,21 +138,21 @@ class TileSatellite extends TileEntity with TileLinker
 				() => LinkedTiles get side foreach { _.reset() }
 			)
 	// Called when this TE is unloaded or invalidated
-	private def unwatchLinkedTiles(): Unit =
-		if (!worldObj.isRemote)
-			ChunkWatcher unwatch new BlockPos(this)
+	private def unwatchLinkedTiles(): Unit = {
+		ChunkWatcher unwatch new BlockPos(this)
+	}
 
 	//******************************************************************************************************************
 	// State persistence
 	//******************************************************************************************************************
 	override def readFromNBT(tag: NBTTagCompound): Unit = {
 		super.readFromNBT(tag)
-		loadRedstone(tag) // RedstoneLinker
+		loadRedstone(tag)
 	}
 
 	override def writeToNBT(tag: NBTTagCompound): Unit = {
 		super.writeToNBT(tag)
-		saveRedstone(tag) // RedstoneLinker
+		saveRedstone(tag)
 	}
 
 	//******************************************************************************************************************
@@ -176,10 +165,7 @@ class TileSatellite extends TileEntity with TileLinker
 	//******************************************************************************************************************
 
 	override protected def linkedSides = LinkedSides
-
-	private lazy val ThisBlockPos = BlockPos(xCoord, yCoord, zCoord, worldObj)
-	override protected def thisBlock = ThisBlockPos
-	override protected def linkedPartnerCoords = LinkedPartnerCoords
+	override protected def linkedTileCoords = LinkedTileCoords
 
 	//******************************************************************************************************************
 	// Connector maps, lazily constructed
