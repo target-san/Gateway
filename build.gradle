@@ -1,53 +1,59 @@
 // Buildscript config prolog
-allprojects {
-	buildscript {
-    	repositories {
-        	mavenCentral()
-        	maven {
-            	name = "forge"
-            	url = "http://files.minecraftforge.net/maven"
-        	}
-        	maven {
-            	name = "sonatype"
-            	url = "https://oss.sonatype.org/content/repositories/snapshots/"
-        	}
-    	}
-    	dependencies {
-        	classpath "net.minecraftforge.gradle:ForgeGradle:1.2-SNAPSHOT"
-    	}
-	}
+buildscript {
+   	repositories {
+       	mavenCentral()
+       	maven {
+           	name = "forge"
+           	url = "http://files.minecraftforge.net/maven"
+       	}
+       	maven {
+           	name = "sonatype"
+           	url = "https://oss.sonatype.org/content/repositories/snapshots/"
+       	}
+   	}
+   	dependencies {
+       	classpath "net.minecraftforge.gradle:ForgeGradle:1.2-SNAPSHOT"
+   	}
+}
 
+allprojects {
+	// everything should now build in root build folder
 	buildDir new File( new File(rootProject.projectDir, "build"), project.name)
+	// plugins
 	apply plugin: "scala"
 	apply plugin: "forge"
 
-	sourceSets {
-    	main {
-        	def root = project.projectDir // .parentFile
-        	java {
-            	srcDir new File(root, "src")
-        	}
-        	scala {
-            	srcDir new File(root, "src")
-        	}
-        	resources {
-            	srcDir new File(root, "resources")
-        	}
-    	}
+	sourceSets.main {
+       	def root = project.projectDir // .parentFile
+       	java {
+           	srcDirs 'src'
+       	}
+       	scala {
+           	srcDirs 'src'
+   		}
+       	resources {
+           	srcDirs 'resources'
+   		}
+	}
+	
+	minecraft {
+    	version = "1.7.10-10.13.0.1180"
 	}
 }
 
-version = "0.1"
-group= "targetsan.mcmods.gateway" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = "gateway"
 
-minecraft {
-    version = "1.7.10-10.13.0.1180"
-    runDir = "run"
+subprojects {
+	version = "1.0"
+	group = 'api'
+	archivesBaseName = 'api-' + project.projectDir.name
 }
 
+version = "0.1"
+group= "targetsan.mcmods.gateway"
+archivesBaseName = "gateway"
+
 dependencies {
-    compile project: ':api:NotEnoughItems'
+    compile project('api/NotEnoughItems'), project('api/CoFHLib'), project('api/AppEng2')
 }
 // Standard thing with setting properties in mcmod.info
 processResources
