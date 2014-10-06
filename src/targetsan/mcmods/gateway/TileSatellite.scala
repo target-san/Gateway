@@ -98,9 +98,18 @@ class TileSatellite extends TileEntity with TileLinker
 	// Controlling cached references and notifying on their invalidation
 	//******************************************************************************************************************
 
+	// Specified neighbor tile has changed, notify partner
+	def onNeighborTileChanged(side: ForgeDirection): Unit =
+		if (!worldObj.isRemote)
+		for {
+			pos <- LinkedTileCoords get side
+			if pos.world.blockExists(pos.x, pos.y, pos.z)
+		}
+			pos.world.getBlock(pos.x, pos.y, pos.z)
+				.onNeighborChange(pos.world, pos.x, pos.y, pos.z, pos.x + side.offsetX, pos.y + side.offsetY, pos.z + side.offsetZ)
 	// One of neighbor blocks has changed
 	// Check all loaded partners and notify them
-	def onNeighborChanged(): Unit =
+	def onNeighborBlockChanged(): Unit =
 		if (!worldObj.isRemote)
 		for {
 			(side, pos) <- LinkedPartnerCoords

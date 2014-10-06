@@ -71,6 +71,9 @@ class BlockGateway extends BlockContainer(Material.rock)
 	override def onNeighborBlockChange(world: World, x: Int, y: Int, z: Int, block: Block) = 
 		subBlock(world, x, y, z).onNeighborBlockChange(world, x, y, z, block)
 
+	override def onNeighborChange(world: IBlockAccess, x: Int, y: Int, z: Int, tileX: Int, tileY: Int, tileZ: Int) =
+		subBlock(world, x, y, z).onNeighborChange(world, x, y, z, tileX, tileY, tileZ)
+
 	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int) = 
 		subBlock(meta).onBlockPreDestroy(world, x, y, z, meta)
 	
@@ -216,7 +219,7 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 		world
 			.getTileEntity(x, y, z)
 			.as[TileSatellite]
-			.foreach { _.onNeighborChanged() }
+			.foreach { _.onNeighborBlockChanged() }
 
 		// Deconstruction logic
 		if (isDiagonal ||
@@ -229,7 +232,23 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 			.as[TileGateway]
 			.foreach { _.unmarkForDispose(this.side) }
 	}
-	
+
+	override def onNeighborChange(world: IBlockAccess, x: Int, y: Int, z: Int, tx: Int, ty: Int, tz: Int): Unit =
+		world
+			.getTileEntity(x, y, z)
+			.as[TileSatellite]
+			.foreach { _.onNeighborTileChanged(
+				(tx - x, ty - y, tz - z) match {
+					case ( 0, -1,  0) => ForgeDirection.DOWN
+					case ( 0,  1,  0) => ForgeDirection.UP
+					case ( 0,  0, -1) => ForgeDirection.NORTH
+					case ( 0,  0,  1) => ForgeDirection.SOUTH
+					case (-1,  0,  0) => ForgeDirection.WEST
+					case ( 1,  0,  0) => ForgeDirection.EAST
+					case _ => ForgeDirection.UNKNOWN
+				}
+			)}
+
 	override def onBlockPreDestroy(world: World, x: Int, y: Int, z: Int, meta: Int) =
 		world
 			.getTileEntity(x - xOffset, y, z - zOffset)
