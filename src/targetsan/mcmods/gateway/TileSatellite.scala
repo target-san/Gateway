@@ -152,7 +152,9 @@ class TileSatellite extends TileEntity with TileLinker
 	//******************************************************************************************************************
 	// TileLinker support
 	//******************************************************************************************************************
-	def tileAs[T: ClassTag](side: ForgeDirection): Option[T] = LinkedTiles get side flatMap { _.get } flatMap { _.as[T] }
+	def tileAs[T: ClassTag](side: ForgeDirection): Option[T] =
+		if (worldObj.isRemote) None
+		else LinkedTiles get side flatMap { _.get } flatMap { _.as[T] }
 
 	//******************************************************************************************************************
 	// Connector maps, lazily constructed
