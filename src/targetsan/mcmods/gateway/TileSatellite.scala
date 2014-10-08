@@ -55,6 +55,8 @@ object ChunkWatcher {
 
 class TileSatellite extends TileEntity with TileLinker
 	with FluidLinker
+	with cofh.ItemDuctLinker
+	with cofh.EnergyLinker
 {
 	//******************************************************************************************************************
 	// Satellite's context, lazily resolved, not persisted
