@@ -1,6 +1,6 @@
 package targetsan.mcmods.gateway
 
-import cpw.mods.fml.common.Mod
+import cpw.mods.fml.common.{FMLCommonHandler, Mod}
 import cpw.mods.fml.common.event.FMLInitializationEvent
 import cpw.mods.fml.common.event.FMLPostInitializationEvent
 import net.minecraft.tileentity.TileEntity
@@ -32,12 +32,16 @@ object GatewayMod {
     @Mod.EventHandler
 	def postInit(event: FMLPostInitializationEvent)
     {
-    	MinecraftForge.EVENT_BUS.register(EventHandler)
+    	MinecraftForge.EVENT_BUS.register(EventHandler.INSTANCE)
     }
 }
 
 object Utils
 {
+	// Shortcuts for checking whether we're on client or server
+	lazy val isServer = FMLCommonHandler.instance().getSide.isServer
+	lazy val isClient = !isServer
+
 	case class ChunkPos(x: Int, z: Int, world: World) {
 		def this(chunk: Chunk) =
 			this(chunk.xPosition, chunk.zPosition, chunk.worldObj)
