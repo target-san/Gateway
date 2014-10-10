@@ -2,6 +2,7 @@ package targetsan.mcmods.gateway
 
 import net.minecraft.world.World
 import net.minecraft.init.Blocks
+import targetsan.mcmods.gateway.block.SubBlockCore
 import scala.util.Try
 import scala.util.Success
 import net.minecraft.entity.player.EntityPlayer

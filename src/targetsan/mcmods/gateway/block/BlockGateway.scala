@@ -1,21 +1,16 @@
-package targetsan.mcmods.gateway
+package targetsan.mcmods.gateway.block
 
-import net.minecraft.block.Block
-import net.minecraft.block.BlockContainer
 import net.minecraft.block.material.Material
+import net.minecraft.block.{Block, BlockContainer}
 import net.minecraft.client.renderer.texture.IIconRegister
-import net.minecraft.entity.{EnumCreatureType, Entity}
-import net.minecraft.init.{Blocks, Items}
-import net.minecraft.world.World
-import net.minecraft.util.IIcon
 import net.minecraft.entity.player.EntityPlayer
-import net.minecraft.world.IBlockAccess
+import net.minecraft.entity.{Entity, EnumCreatureType}
+import net.minecraft.init.{Blocks, Items}
+import net.minecraft.util.{AxisAlignedBB, IIcon, MovingObjectPosition, Vec3}
+import net.minecraft.world.{IBlockAccess, World}
 import net.minecraftforge.common.util.ForgeDirection
-import net.minecraft.util.MovingObjectPosition
-import net.minecraft.util.Vec3
-import net.minecraft.util.AxisAlignedBB
-
-import Utils._
+import targetsan.mcmods.gateway._
+import targetsan.mcmods.gateway.Utils._
 
 class BlockGateway extends BlockContainer(Material.rock)
 	with DropsNothing
@@ -257,8 +252,8 @@ class SubBlockSatellite(val xOffset: Int, val zOffset: Int) extends SubBlock(Mat
 
 	override def registerBlockIcons(icons: IIconRegister)
 	{
-		import ForgeDirection._
-		import Utils._
+		import net.minecraftforge.common.util.ForgeDirection._
+		import targetsan.mcmods.gateway.Utils._
 		// Load base icons
 		val topCorner = icons.registerIcon("gateway:top-corner")
 		val topSide = icons.registerIcon("gateway:top-side")

@@ -5,6 +5,7 @@ import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.common.util.ForgeDirection
 
 import targetsan.mcmods.gateway.Utils._
+import targetsan.mcmods.gateway.block.SubBlockSatellite
 import targetsan.mcmods.gateway.linkers._
 
 import scala.reflect.ClassTag

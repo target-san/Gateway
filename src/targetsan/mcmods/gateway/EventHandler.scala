@@ -1,21 +1,17 @@
 package targetsan.mcmods.gateway
 
-import scala.util._
-import cpw.mods.fml.common.eventhandler.SubscribeEvent
-import net.minecraftforge.event.entity.player.PlayerInteractEvent
-import net.minecraftforge.event.entity.living.{EnderTeleportEvent, LivingSpawnEvent}
-import net.minecraft.world.World
-import net.minecraft.entity.player.EntityPlayer
-import net.minecraft.util.ChatComponentText
-import net.minecraft.init.Blocks
-import net.minecraft.util.ChatStyle
-import net.minecraft.util.EnumChatFormatting
-import net.minecraftforge.event.world.{ChunkEvent, WorldEvent}
-import net.minecraft.item.ItemStack
-import net.minecraftforge.oredict.OreDictionary
 import cpw.mods.fml.common.Loader
+import cpw.mods.fml.common.eventhandler.{Event, SubscribeEvent}
 import net.minecraft.entity.Entity
-import cpw.mods.fml.common.eventhandler.Event
+import net.minecraft.item.ItemStack
+import net.minecraft.util.{ChatComponentText, ChatStyle, EnumChatFormatting}
+import net.minecraft.world.World
+import net.minecraftforge.event.entity.living.{EnderTeleportEvent, LivingSpawnEvent}
+import net.minecraftforge.event.entity.player.PlayerInteractEvent
+import net.minecraftforge.event.world.{ChunkEvent, WorldEvent}
+import net.minecraftforge.oredict.OreDictionary
+
+import scala.util._
 
 object EventHandler
 {
@@ -44,23 +40,23 @@ object EventHandler
 		if (event.entityPlayer.getHeldItem.getItem == net.minecraft.init.Items.flint_and_steel)
 		if (event.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK)
 			GatewayMod
-			.BlockGateway
-			.cores
-			// Success(false) = nothing found, but we can continue
-			// Success(true)  = some multiblock successfully constructed, we should stop
-			// Failure(error) = some multiblock was valid to construct, but an error occured
-			.foldLeft[Try[Boolean]](Success(false))
-			{	case (Success(false), (_, core)) =>
-					core.multiblock.assemble(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
-				case (x, _) => x
-			} match {
-				case Failure(error) =>
-					event.entityPlayer.addChatMessage(
-						new ChatComponentText(error.getMessage)
-						.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED))
-					)
-				case _ => ()
-			}
+				.BlockGateway
+				.cores
+				// Success(false) = nothing found, but we can continue
+				// Success(true)  = some multiblock successfully constructed, we should stop
+				// Failure(error) = some multiblock was valid to construct, but an error occured
+				.foldLeft[Try[Boolean]](Success(false))
+				{	case (Success(false), (_, core)) =>
+						core.multiblock.assemble(event.entityPlayer.worldObj, event.x, event.y, event.z, event.entityPlayer)
+					case (x, _) => x
+				} match {
+					case Failure(error) =>
+						event.entityPlayer.addChatMessage(
+							new ChatComponentText(error.getMessage)
+							.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED))
+						)
+					case _ => ()
+				}
 	// Prevent Endermen from teleporting onto Gateway surface
 	@SubscribeEvent
 	def onEnderTeleport(event: EnderTeleportEvent): Unit =

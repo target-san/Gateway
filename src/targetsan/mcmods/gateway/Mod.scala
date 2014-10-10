@@ -11,6 +11,7 @@ import cpw.mods.fml.common.registry.GameRegistry
 import net.minecraft.server.MinecraftServer
 import net.minecraft.util.{ChunkCoordinates, IIcon}
 import net.minecraft.entity.Entity
+import targetsan.mcmods.gateway.block._
 
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
