@@ -6,9 +6,11 @@ import net.minecraft.client.renderer.texture.IIconRegister
 import net.minecraft.entity.Entity
 import net.minecraft.util.IIcon
 import net.minecraft.world.World
-import targetsan.mcmods.gateway.{TileGateway, Multiblock}
+import targetsan.mcmods.gateway._
 
-class Core(val multiblock: Multiblock) extends BlockContainer(Material.rock)
+/** Gateway core block. Responsible for responding to teleport event from pillar
+ */
+class Core extends BlockContainer(Material.rock)
 	with TeleportActor
 	with DropsNothing
 	with Unbreakable

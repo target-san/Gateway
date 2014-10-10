@@ -12,7 +12,6 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.util.{ChunkCoordinates, IIcon}
 import net.minecraft.entity.Entity
 import net.minecraftforge.common.util.ForgeDirection
-import targetsan.mcmods.gateway.block._
 
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
@@ -20,15 +19,10 @@ import scala.reflect.ClassTag
 @Mod(modid = "gateway", useMetadata = true, modLanguage = "scala")
 object GatewayMod {
 	val MODID = "gateway"
-		
-	val BlockGateway = new BlockGateway
-    
+
     @Mod.EventHandler
 	def init(event: FMLInitializationEvent)
 	{
-		GameRegistry.registerBlock(BlockGateway, "BlockGateway")
-		GameRegistry.registerTileEntity(classOf[TileGateway], "tileGateway")
-		GameRegistry.registerTileEntity(classOf[TileSatellite], "tileSatellite")
 	}
 
     @Mod.EventHandler

@@ -24,7 +24,6 @@ class Pillar extends Block(Material.rock)
 	//******************************************************************************************************************
 	// TeleportActor
 	//******************************************************************************************************************
-
 	override def onEntityCollidedWithBlock(world: World, x: Int, y: Int, z: Int, entity: Entity) =
 		teleportEntity(world, x, y, z, entity)
 
