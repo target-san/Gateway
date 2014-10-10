@@ -5,7 +5,7 @@ import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.common.util.ForgeDirection
 
 import targetsan.mcmods.gateway.Utils._
-import targetsan.mcmods.gateway.block.SubBlockSatellite
+import targetsan.mcmods.gateway.block.Edge
 import targetsan.mcmods.gateway.linkers._
 
 import scala.reflect.ClassTag
@@ -65,7 +65,7 @@ class TileSatellite extends TileEntity with TileLinker
 
 	// Satellite block type
 	// context-internal
-	private lazy val SatBlock = GatewayMod.BlockGateway.subBlock(getBlockMetadata).asInstanceOf[SubBlockSatellite]
+	private lazy val SatBlock = GatewayMod.BlockGateway.subBlock(getBlockMetadata).asInstanceOf[Edge]
 	// Context values used in other parts and displayed outside
 
 	// Sides which link through gateway

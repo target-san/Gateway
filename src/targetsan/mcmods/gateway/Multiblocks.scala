@@ -2,7 +2,7 @@ package targetsan.mcmods.gateway
 
 import net.minecraft.world.World
 import net.minecraft.init.Blocks
-import targetsan.mcmods.gateway.block.SubBlockCore
+import targetsan.mcmods.gateway.block.Core
 import scala.util.Try
 import scala.util.Success
 import net.minecraft.entity.player.EntityPlayer
@@ -19,7 +19,7 @@ trait Multiblock
 trait MultiblockImpl extends Multiblock
 {
 	protected val PortalPillarHeight = 3
-	protected def core: SubBlockCore
+	protected def core: Core
 
 	protected def rawAssemble(world: World, x: Int, y: Int, z: Int) =
 	{

@@ -11,6 +11,7 @@ import cpw.mods.fml.common.registry.GameRegistry
 import net.minecraft.server.MinecraftServer
 import net.minecraft.util.{ChunkCoordinates, IIcon}
 import net.minecraft.entity.Entity
+import net.minecraftforge.common.util.ForgeDirection
 import targetsan.mcmods.gateway.block._
 
 import scala.collection.mutable.ListBuffer
@@ -50,7 +51,24 @@ object Utils
 			this(tile.xCoord, tile.yCoord, tile.zCoord, tile.getWorldObj)
 		def this(coords: ChunkCoordinates, world: World) =
 			this(coords.posX, coords.posY, coords.posZ, world)
+
+		def + (that: BlockPos) = BlockPos(x + that.x, y + that.y, z + that.z, world)
+
+		def + (dir: ForgeDirection) = BlockPos(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ, world)
+		def - (dir: ForgeDirection) = this + dir.getOpposite
 	}
+
+	def offsetToDirection(x: Int, y: Int, z: Int): ForgeDirection =
+		(x, y, z) match {
+			case ( 0, -1,  0) => ForgeDirection.DOWN
+			case ( 0,  1,  0) => ForgeDirection.UP
+			case ( 0,  0, -1) => ForgeDirection.NORTH
+			case ( 0,  0,  1) => ForgeDirection.SOUTH
+			case (-1,  0,  0) => ForgeDirection.WEST
+			case ( 1,  0,  0) => ForgeDirection.EAST
+
+			case _ => ForgeDirection.UNKNOWN
+		}
 
 	val NetherDimensionId = -1
 	val EndDimensionId = 1
