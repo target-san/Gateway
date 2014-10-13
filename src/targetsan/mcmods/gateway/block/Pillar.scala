@@ -7,7 +7,7 @@ import net.minecraft.world.{IBlockAccess, World}
 
 import targetsan.mcmods.gateway.Utils._
 
-class Pillar extends Block(Material.rock)
+class Pillar extends Block(Material.portal)
 	with TeleportActor
 	with NotCollidable
 	with NotActivable
