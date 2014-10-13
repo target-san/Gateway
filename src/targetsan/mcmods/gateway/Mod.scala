@@ -15,6 +15,9 @@ object GatewayMod {
 	{
 		GameRegistry.registerBlock(Blocks.Gateway, "gateway")
 		GameRegistry.registerBlock(Blocks.Pillar, "pillar")
+
+		GameRegistry.registerTileEntity(classOf[tile.Core],  "gateway-core")
+		GameRegistry.registerTileEntity(classOf[tile.Perimeter], "gateway-perimeter")
 	}
 
     @Mod.EventHandler

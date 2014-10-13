@@ -15,7 +15,7 @@ import targetsan.mcmods.gateway.Utils._
 /** Represents gateway's solid platform tiles
  *  Platform is intended to be 3x3
  *  Meta 0 is a core
- *  Meta 1..8 are outer blocks
+ *  Meta 1..8 are blocks of platform perimeter
  */
 class Gateway extends BlockContainer(Material.rock)
 	with TeleportActor
@@ -27,11 +27,17 @@ class Gateway extends BlockContainer(Material.rock)
 	setBlockName("gateway:gateway")
 	setBlockTextureName("gateway:smooth_obsidian")
 
+	val CoreMeta = 0
+	val PerimeterMetas = 1 to 9
+
 	//******************************************************************************************************************
 	// TileEntity
 	//******************************************************************************************************************
-	override def hasTileEntity(meta: Int) = true
-	override def createNewTileEntity(world: World, meta: Int) = new tile.Gateway
+	override def hasTileEntity(meta: Int) = (meta == CoreMeta) || (PerimeterMetas contains meta)
+	override def createNewTileEntity(world: World, meta: Int) =
+		if (meta == CoreMeta) new tile.Core
+		else if (PerimeterMetas contains meta) new tile.Perimeter
+		else null
 
 	private def getTile(w: IBlockAccess, x: Int, y: Int, z: Int) = w.getTileEntity(x, y, z).as[tile.Gateway]
 
