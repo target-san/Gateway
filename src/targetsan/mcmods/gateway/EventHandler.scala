@@ -1,12 +1,12 @@
 package targetsan.mcmods.gateway
 
 import cpw.mods.fml.common.Loader
-import cpw.mods.fml.common.eventhandler.{Event, SubscribeEvent}
+import cpw.mods.fml.common.eventhandler.SubscribeEvent
 import net.minecraft.entity.Entity
 import net.minecraft.item.ItemStack
 import net.minecraft.util.{ChatComponentText, ChatStyle, EnumChatFormatting}
 import net.minecraft.world.World
-import net.minecraftforge.event.entity.living.{EnderTeleportEvent, LivingSpawnEvent}
+import net.minecraftforge.event.entity.living.EnderTeleportEvent
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import net.minecraftforge.event.world.{ChunkEvent, WorldEvent}
 import net.minecraftforge.oredict.OreDictionary
@@ -15,13 +15,14 @@ import scala.util._
 
 object EventHandler
 {
-	private val BlockGatewayItemStack = new ItemStack(GatewayMod.BlockGateway, 1, OreDictionary.WILDCARD_VALUE)
-	
 	@SubscribeEvent
 	def onWorldLoad(event: WorldEvent.Load): Unit =
 		if (event.world.isRemote) // client-only
-		if (Loader.isModLoaded("NotEnoughItems")) // makes sense only for NEI
-			codechicken.nei.api.API.hideItem(BlockGatewayItemStack)
+		if (Loader.isModLoaded("NotEnoughItems")) {
+			// makes sense only for NEI
+			codechicken.nei.api.API.hideItem(new ItemStack(Blocks.Gateway, 1, OreDictionary.WILDCARD_VALUE))
+			codechicken.nei.api.API.hideItem(new ItemStack(Blocks.Pillar, 1, OreDictionary.WILDCARD_VALUE))
+		}
 
 	// Used to handle unload watchers when they're needed
 	// Satellite installs such a watcher over its linked tile's chunk
@@ -62,12 +63,7 @@ object EventHandler
 	def onEnderTeleport(event: EnderTeleportEvent): Unit =
 		if (isGatewayUnderEntity(event.entity, event.entity.worldObj, event.targetX, event.targetY, event.targetZ))
 			event.setCanceled(true)
-	// Prevent any mobs from spawning directly on Gateway surface
-	@SubscribeEvent
-	def onMobSpawn(event: LivingSpawnEvent.CheckSpawn): Unit =
-		if (isGatewayUnderEntity(event.entity, event.world, event.x, event.y, event.z))
-			event.setResult(Event.Result.DENY)
-	
+
 	private def isGatewayUnderEntity(entity: Entity, world: World, x: Double, y: Double, z: Double): Boolean =
-		world.getBlock(Math.floor(x).toInt, Math.floor(y - entity.yOffset).toInt - 1, Math.floor(z).toInt) == GatewayMod.BlockGateway
+		world.getBlock(Math.floor(x).toInt, Math.floor(y - entity.yOffset).toInt - 1, Math.floor(z).toInt) == Blocks.Gateway
 }

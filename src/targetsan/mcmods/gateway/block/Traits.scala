@@ -1,10 +1,10 @@
 package targetsan.mcmods.gateway.block
 
 import net.minecraft.block.Block
-import net.minecraft.entity.Entity
+import net.minecraft.entity.{EnumCreatureType, Entity}
 import net.minecraft.item.{Item, ItemStack}
 import net.minecraft.util.{AxisAlignedBB, MovingObjectPosition, Vec3}
-import net.minecraft.world.World
+import net.minecraft.world.{IBlockAccess, World}
 
 trait TeleportActor
 {
@@ -33,6 +33,11 @@ trait Unbreakable extends Block
 {
 	setBlockUnbreakable()
 	setResistance(6000000.0F)
+
+	// No idea where else to put this
+	override def canCreatureSpawn(t :EnumCreatureType, world: IBlockAccess, x: Int, y: Int, z: Int) = false
+	// Damn! No stupid enderdragon would break my portals!
+	override def canEntityDestroy(world: IBlockAccess, x: Int, y: Int, z: Int, entity: Entity) = false
 }
 
 trait NotCollidable extends Block
