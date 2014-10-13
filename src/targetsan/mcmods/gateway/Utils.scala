@@ -19,11 +19,14 @@ package object Utils
 	}
 	case class BlockPos(x: Int, y: Int, z: Int, world: World) {
 		def chunk = ChunkPos(x >> 4, z >> 4, world)
+		def dim = world.provider.dimensionId
 
 		def this(tile: TileEntity) =
 			this(tile.xCoord, tile.yCoord, tile.zCoord, tile.getWorldObj)
 		def this(coords: ChunkCoordinates, world: World) =
 			this(coords.posX, coords.posY, coords.posZ, world)
+		def this(x: Int, y: Int, z: Int, dimId: Int) =
+			this(x, y, z, Utils.world(dimId))
 
 		def + (that: BlockPos) = BlockPos(x + that.x, y + that.y, z + that.z, world)
 
