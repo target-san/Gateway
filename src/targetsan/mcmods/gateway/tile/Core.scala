@@ -5,10 +5,12 @@ import java.util.UUID
 
 import gateway.api._
 import net.minecraft.entity.Entity
+import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.util.{Vec3, ChunkCoordinates}
 import net.minecraft.world.WorldServer
 import net.minecraftforge.common.MinecraftForge
+import net.minecraftforge.common.util.ForgeDirection
 import targetsan.mcmods.gateway._
 import targetsan.mcmods.gateway.Utils._
 
@@ -26,6 +28,9 @@ class Core extends Gateway {
 	private def isAssembled = getFlag(0)
 	private def isAssembled_= (value: Boolean) { setFlag(0, value) }
 
+	// All public funcs should check this, ensures that gateway multiblock is assembled, and we're on logical server
+	private def isAlive = !worldObj.isRemote && isAssembled
+
 	// Multiblock type, size: 3, offset: 1
 	// affects which disassembly function is used
 	private def multiblockType = getState(1, 3)
@@ -37,10 +42,37 @@ class Core extends Gateway {
 	private def areMarksSet = getState(4, 4) == 0x0F
 
 	//******************************************************************************************************************
-	// Various helper functions
+	// Lifecycle control
 	//******************************************************************************************************************
-	// All public funcs should check this, ensures that gateway multiblock is assembled, and we're on logical server
-	private def isAlive = !worldObj.isRemote && isAssembled
+	def init(owner: EntityPlayer, partner: Core, multiblockType: Int): Unit = {
+		if (worldObj.isRemote) return // server only
+		if (isAssembled || isInvalid)
+			throw new IllegalStateException("Gateway core can be initialized only once. Init should be done only for valid tile")
+
+		isAssembled = true
+
+		partnerPos = new BlockPos(partner)
+		ownerId = owner.getGameProfile.getId
+		ownerName = owner.getGameProfile.getName
+		this.multiblockType = multiblockType
+		markDirty()
+	}
+
+	override def invalidate(): Unit = {
+		super.invalidate()
+		if (!isAlive)
+			return
+
+		isAssembled = false
+
+		// TODO: deconstruct multiblock here
+
+		partnerPos
+			.world
+			.getTileEntity(partnerPos.x, partnerPos.y, partnerPos.z)
+			.as[Core]
+			.foreach { _.invalidate() }
+	}
 
 	//******************************************************************************************************************
 	// Teleport support
@@ -99,6 +131,23 @@ class Core extends Gateway {
 		)
 
 	}
+
+	//******************************************************************************************************************
+	// In-game deconstruction
+	//******************************************************************************************************************
+	def startDispose(invoker: EntityPlayer, side: ForgeDirection): Unit = {
+		if (!isAlive || invoker == null || invoker.getGameProfile.getId != ownerId)
+			return
+
+		setDisposalMark(side.ordinal() - 2, value = true)
+
+		if (areMarksSet)
+			invalidate()
+	}
+
+	def stopDispose(side: ForgeDirection): Unit =
+		if (isAlive)
+			setDisposalMark(side.ordinal() - 2, value = false)
 
 	//******************************************************************************************************************
 	// Persistence
