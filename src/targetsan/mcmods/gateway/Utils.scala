@@ -13,12 +13,22 @@ import scala.reflect.ClassTag
 
 package object Utils
 {
+	private def maskOfSize(size: Int) = (0x01 << size) - 1
+
+	def getBits(field: Int, offset: Int, size: Int) =
+		(field >>> offset) & maskOfSize(size)
+	def setBits(field: Int, offset: Int, size: Int, bits: Int): Int = {
+		val mask = maskOfSize(size) << offset
+		(field & (~mask)) | ((bits << offset) & mask)
+	}
+
 	case class ChunkPos(x: Int, z: Int, world: World) {
 		def this(chunk: Chunk) =
 			this(chunk.xPosition, chunk.zPosition, chunk.worldObj)
 	}
 	case class BlockPos(x: Int, y: Int, z: Int, world: World) {
 		def chunk = ChunkPos(x >> 4, z >> 4, world)
+		def chunkCoordinates = new ChunkCoordinates(x, y, z)
 		def dim = world.provider.dimensionId
 
 		def this(tile: TileEntity) =
