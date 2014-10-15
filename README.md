@@ -1,6 +1,8 @@
 Gateway
 =======
 
+# WARNING! Codebase is being refactored now and is in high flux. It doesn't even compile. I will make some tag when basic features are in-place again
+
 Cross-dimensional portals for Minecraft Forge done right and without overpower
 
 ## Build
@@ -70,7 +72,7 @@ Some explanation about how the proper location for gateway is searched:
 3. Next, all positions in dead zone are evaluated for their 'weight'. The less weight, the better position. Weight is influenced by:
     * non-air blocks above future platform in 3x3x3 volume, where any non-air block adds to weight
     * non-solid blocks in 5x1x5 volume centered around future core, where each non-solid block adds to weight
-    * other gateway's dead zone or nearby liquid (in 7x5x7 volume, with core at the bottom center) completely blocks construction
+    * other gateway's dead zone or nearby liquid (in 7x5x7 volume, with core at the bottom center) completely blocks construction. Liquid is checked for not pouring gateway into lava.
 
 To sum up, the closer position to search volume center, the less blocks are need to destroy for air pocket and the less blocks need to be solidified to create platform, the better. And there's protection against submerging gateway into lava.
 If there's no suitable position, gateway isn't constructed, and message is shown.
@@ -90,7 +92,7 @@ Though playing with gates isn't cost-free, as you will get back only obsidian. I
 
 ## TODO list
 
-1. End: gateway shouldn't be openable until dragin is dead
+1. End: gateway shouldn't be openable until dragon is dead
 2. End, Nether: achievements
 3. Some kind of locator tool - click on block in any world, then see corresponding search volume in Nether being visualized.
 4. Some method of less lossy gateway shutdown.

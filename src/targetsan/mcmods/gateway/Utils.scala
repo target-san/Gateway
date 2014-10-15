@@ -21,44 +21,58 @@ package object Utils
 		val mask = maskOfSize(size) << offset
 		(field & (~mask)) | ((bits << offset) & mask)
 	}
+	// Equivalent to ChunkCoordinates, but immutable
+	class BlockPos private (val x: Int, val y: Int, val z: Int) {
+		def toChunkCoordinates = new ChunkCoordinates(x, y, z)
 
-	case class ChunkPos(x: Int, z: Int) {
-		def withWorld(world: World) = ChunkPosD(x, z, world)
-		def withDim(dim: Int): ChunkPosD = withWorld(Utils.world(dim))
-	}
-	object ChunkPos {
-		def apply(chunk: Chunk): ChunkPos = ChunkPos(chunk.xPosition, chunk.zPosition)
-	}
+		def unary_- = new BlockPos(-x, -y, -z)
 
-	case class ChunkPosD(x: Int, z: Int, world: World) {
-		def noWorld = ChunkPos(x, z)
-	}
-	object ChunkPosD {
-		def apply(chunk: Chunk): ChunkPosD = ChunkPosD(chunk.xPosition, chunk.zPosition, chunk.worldObj)
-		def apply(x: Int, y: Int, dim: Int): ChunkPosD = ChunkPos(x, y).withDim(dim)
+		def offset(dx: Int, dy: Int, dz: Int) = new BlockPos(x + dx, y + dy, z + dz)
+		def offset(that: BlockPos) = new BlockPos(x + that.x, y + that.y, z + that.z)
+
+		def + (that: BlockPos) = offset(that)
+		def - (that: BlockPos) = offset(-that)
+
+		def to (that: BlockPos) = Volume(this, that)
 	}
 
-	case class BlockPos(x: Int, y: Int, z: Int) {
-		def withWorld(world: World) = BlockPosD(x, y, z, world)
-		def withDim(dim: Int): BlockPosD = withWorld(Utils.world(dim))
-
-		def chunk = ChunkPos(x >> 4, z >> 4)
-		def chunkCoordinates = new ChunkCoordinates(x, y, z)
-
-		def + (that: BlockPos) = BlockPos(x + that.x, y + that.y, z + that.z)
-		def - (that: BlockPos) = BlockPos(x - that.x, y - that.y, z - that.z)
-	}
 	object BlockPos {
-		def apply(tile: TileEntity): BlockPos = BlockPos(tile.xCoord, tile.yCoord, tile.zCoord)
+		def apply(x: Int, y: Int, z: Int) = new BlockPos(x, y, z)
+		def apply(tile: TileEntity) = new BlockPos(tile.xCoord, tile.yCoord, tile.zCoord)
+		def apply(coords: ChunkCoordinates) = new BlockPos(coords.posX, coords.posY, coords.posZ)
 	}
 
-	case class BlockPosD(x: Int, y: Int, z: Int, world: World) {
-		def noWorld = BlockPos(x, y, z)
-		def dim = world.provider.dimensionId
+	class Volume private (val minX: Int, val minY: Int, val minZ: Int, val maxX: Int, val maxY: Int, val maxZ: Int) {
+
+		val min = BlockPos(minX, minY, minZ)
+		val max = BlockPos(maxX, maxY, maxZ)
+
+		val rangeX = minX to maxX
+		val rangeY = minY to maxY
+		val rangeZ = minZ to maxZ
+
+		val sizeX = rangeX.length
+		val sizeY = rangeY.length
+		val sizeZ = rangeZ.length
+
+		def contains (x: Int, y: Int, z: Int): Boolean = (rangeX contains x) && (rangeY contains y) && (rangeZ contains z)
+		def contains (pos: BlockPos): Boolean = contains(pos.x, pos.y, pos.z)
+
+		def enum = enumVolume(min, max)
 	}
-	object BlockPosD {
-		def apply(tile: TileEntity): BlockPosD = BlockPos(tile).withWorld(tile.getWorldObj)
-		def apply(x: Int, y: Int, z: Int, dim: Int): BlockPosD = BlockPos(x, y, z).withDim(dim)
+
+	object Volume {
+		def apply(x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int): Volume =
+			new Volume(
+				Math.min(x1, x2),
+				Math.min(y1, y2),
+				Math.min(z1, z2),
+				Math.max(x1, x2),
+				Math.max(y1, y2),
+				Math.max(z1, z2)
+			)
+
+		def apply(pos1: BlockPos, pos2: BlockPos): Volume = Volume(pos1.x, pos1.y, pos1.z, pos2.x, pos2.y, pos2.z)
 	}
 
 	def offsetToDirection(x: Int, y: Int, z: Int): ForgeDirection =
@@ -83,10 +97,10 @@ package object Utils
 
 	def world(dim: Int) = MinecraftServer.getServer.worldServerForDimension(dim)
 
-	def enumVolume(x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int): Seq[(Int, Int, Int)] =
-		for (x <- x1 to x2; y <- y1 to y2; z <- z1 to z2) yield (x, y, z)
+	def enumVolume(x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int): Seq[BlockPos] =
+		for (x <- x1 to x2; y <- y1 to y2; z <- z1 to z2) yield BlockPos(x, y, z)
 
-	def enumVolume(min: BlockPos, max: BlockPos): Seq[(Int, Int, Int)] = enumVolume(min.x, min.y, min.z, max.x, max.y, max.z)
+	def enumVolume(min: BlockPos, max: BlockPos): Seq[BlockPos] = enumVolume(min.x, min.y, min.z, max.x, max.y, max.z)
 
 	def bottomMount(entity: Entity): Entity =
 		if (entity == null) null

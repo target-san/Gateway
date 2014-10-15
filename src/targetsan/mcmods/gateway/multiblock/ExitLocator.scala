@@ -10,48 +10,44 @@ import targetsan.mcmods.gateway.Utils._
   */
 object ExitLocator {
 	// Proper scan algorithm
-	private def findExit(from: World, x0: Int, y0: Int, z0: Int): Either[String, (Int, Int, Int)] = {
+	def findExit(fromWorld: World, fromPos: BlockPos): Either[String, BlockPos] = {
 		val to = Utils.interDimension
-		val center = translatePoint(from, x0, y0, z0, to)
+		val center = translatePoint(fromWorld, fromPos, to)
 		val LookupH = to.provider.getActualHeight / HeightFractions
 		val offset = BlockPos(LookupR, LookupH, LookupR)
 
-		val volume = scanVolume(to, cx, cy, cz)
-
-
-
-		findExit(to, center - offset, center + offset, center)
+		findExit(to, center - offset to center + offset, center)
 	}
 
-	private def translatePoint(from: World, x: Int, y: Int, z: Int, to: World): BlockPos =
+	private def translatePoint(from: World, pos: BlockPos, to: World): BlockPos =
 	{
 		def mapCoord(c: Int) = Math.floor(c * from.provider.getMovementFactor / to.provider.getMovementFactor).toInt
-		BlockPos(mapCoord(x), (to.provider.getActualHeight - 1) / 2, mapCoord(z))
+		BlockPos(mapCoord(pos.x), (to.provider.getActualHeight - 1) / 2, mapCoord(pos.z))
 	}
 
-	private def findExit(world: World, min: BlockPos, max: BlockPos, center: BlockPos): Either[String, (Int, Int, Int)] =
+	private def findExit(world: World, vol: Volume, center: BlockPos): Either[String, BlockPos] =
 	{
 		def sqr(x: Int) = x * x
+		val volFunc = scanVolume(world, vol)
 
-		def distFactor(x: Int, y: Int, z: Int): Double =
-			Math.log(sqr(x - center.x) + sqr((y - center.y) / 2) + sqr(z - center.z) + 1)
+		def distFactor(pos: BlockPos): Double =
+			Math.log(sqr(pos.x - center.x) + sqr((pos.y - center.y) / 2) + sqr(pos.z - center.z) + 1)
 
-		val (anchors, normals) = Utils
-			.enumVolume(min, max)
+		val (anchors, normals) = vol
+			.enum
 			.view
-			.map(pos => (pos._1, pos._2, pos._3, ratePosition(pos._1, pos._2, pos._3, volume) ) ) // calculate position-independent rates
-			.filter(_._4 != Int.MaxValue) // Get rid of invalid positions
-			.map({ case (x, y, z, r) => (x, y, z, r + distFactor(x, y, z)) }) // Add distance factor
-			.sortBy(_._4) // Sort by rate
-			.partition(_._4  < 0)
+			.map(pos => (pos, ratePosition(pos, volFunc) ) ) // calculate position-independent rates
+			.filter(_._2 != Int.MaxValue) // Get rid of invalid positions
+			.map({ case (pos, r) => (pos, r + distFactor(pos)) }) // Add distance factor
+			.sortBy(_._2) // Sort by rate
+			.partition(_._2  < 0)
 
 		anchors.length match {
 			case 1 => // exactly one anchor, as expected
-				val pos = anchors.head
-				Right((pos._1, pos._2, pos._3))
+				Right(anchors.head._1)
 			case 0 => // no anchors, so just use most suitable
 				normals.headOption match {
-					case Some((x, y, z, _)) => Right((x, y, z))
+					case Some((pos, _)) => Right(pos)
 					case _ => Left("Gateway cannot open - there are obstacles on the other side. Might be other gateway too near")
 				}
 			case _ => Left("More than one usable anchor detected, so portal cannot open. Please remove all except one, or let it open by itself")
@@ -62,6 +58,16 @@ object ExitLocator {
 	{
 		type BlockType = Value
 		val None, Invalid, Solid, Complex, Liquid, Air, Anchor = Value
+
+		def evalBlock(world: World, pos: BlockPos): BlockType = {
+			val b = world.getBlock(pos.x, pos.y, pos.z)
+			if (b.getBlockHardness(world, pos.x, pos.y, pos.z) < 0) BlockType.Invalid
+			else if (b == Blocks.redstone_block) BlockType.Anchor
+			else if (b.isAir(world, pos.x, pos.y, pos.z)) BlockType.Air
+			else if (b.getMaterial.isLiquid) BlockType.Liquid
+			else if (b.isBlockNormalCube) BlockType.Solid
+			else BlockType.Complex
+		}
 	}
 	// Scans volume and returns mapping - coordinates to block type
 	// Algorithm suggests that endpoint volume shouldn't contain 'invalid' blocks
@@ -71,97 +77,81 @@ object ExitLocator {
 	private val LookupR = 5
 	private val EndpointR = 3
 	private val HeightFractions = 4 // N, used for 1/Nth of actual dimension height
+	private val PortalPillarHeight = 3
 
-	private val EffDeadR = DeadR - EndpointR
-	private val EffLookupR = LookupR + EndpointR
+	private type VolumeFunc = BlockPos => BlockType.BlockType
 
-	private type VolumeFunc = (Int, Int, Int) => BlockType.BlockType
-
-	private def scanVolume(w: World, cx: Int, cy: Int, cz: Int): VolumeFunc =
+	private def scanVolume(w: World, vol: Volume): VolumeFunc =
 	{
-		val LookupH = w.provider.getActualHeight / HeightFractions
+		val endpointDelta = BlockPos(EndpointR, 0, EndpointR)
+		val lookVol = Volume(vol.min - endpointDelta, vol.max + endpointDelta)
 
-		val lookupX = cx - EffLookupR to cx + EffLookupR
-		val lookupY = cy - LookupH to cy + LookupH
-		val lookupZ = cz - EffLookupR to cz + EffLookupR
 		// Dead zone markup manipulation; no need to span across whole zone, as the region outside lookup is dead anyway
-		val deadFieldStorage = Array.fill(lookupX.length * lookupZ.length)(false) // defines dead zone
-		def isDead(x: Int, z: Int): Boolean =
-			if ((lookupX contains x) && (lookupZ contains z))
-				deadFieldStorage((x - lookupX.start) * lookupZ.length + z - lookupZ.start)
-			else true
+		val deadFieldStorage = Array.fill(lookVol.sizeX * lookVol.sizeZ)(false) // defines dead zone
+		def deadIndex(x: Int, z: Int): Option[Int] =
+			if ((lookVol.rangeX contains x) && (lookVol.rangeZ contains z))
+				Some((x - lookVol.minX) * lookVol.sizeZ + z - lookVol.minZ)
+			else None
 
+		def isDead(x: Int, z: Int): Boolean =
+			deadIndex(x, z) map { deadFieldStorage(_) } getOrElse true
 		def setDead(x: Int, z: Int, value: Boolean): Unit =
-			if ((lookupX contains x) && (lookupZ contains z))
-				deadFieldStorage((x - lookupX.start) * lookupZ.length + z - lookupZ.start) = value
+			deadIndex(x, z) foreach { deadFieldStorage(_) = value }
+
 		// Lookup zone manipulation
-		val typeStorage = Array.fill(lookupX.length * lookupY.length * lookupZ.length)(BlockType.None)
-		def getType(x: Int, y: Int, z: Int): BlockType.BlockType =
-			if (
-				!(lookupX contains x) ||
-					!(lookupY contains y) ||
-					!(lookupZ contains z) ||
-					isDead(x, z)
-			)
-				BlockType.Invalid
-			else typeStorage(
-				((x - lookupX.start) * lookupY.length + (y - lookupY.start )) * lookupZ.length + (z - lookupZ.start)
-			)
-		def setType(x: Int, y: Int, z: Int, t: BlockType.BlockType): Unit =
-			if ( (lookupX contains x) &&
-				(lookupY contains y) &&
-				(lookupZ contains z)
-			)
-				typeStorage(
-					((x - lookupX.start) * lookupY.length + (y - lookupY.start )) * lookupZ.length + (z - lookupZ.start)
-				) = t
-		// Perform full zone scan
-		val FullR = EffLookupR + EffDeadR
-		for ( (x, y, z) <- Utils.enumVolume(cx - FullR, 1, cz - FullR, cx + FullR, w.provider.getActualHeight - 1, cz + FullR))
-		{
-			val entity = w.getTileEntity(x, y, z)
-			// Mark all columns in other GW's 'dead zone' as 'dead'
-			if (entity != null && entity.isInstanceOf[TileGateway])
-				for {x1 <- x - EffDeadR to x + EffDeadR; z1 <- z - EffDeadR to z + EffDeadR}
-					setDead(x1, z1, true)
-			// Qualify block only if it wasn't already qualified, or shadowed by dead zone
-			if (getType(x, y, z) == BlockType.None)
-				setType(x, y, z,
-				{
-					val b = w.getBlock(x, y, z)
-					if (b.getBlockHardness(w, x, y, z) < 0) BlockType.Invalid
-					else if (b == Blocks.redstone_block) BlockType.Anchor
-					else if (b.isAir(w, x, y, z)) BlockType.Air
-					else if (b.isInstanceOf[BlockLiquid]) BlockType.Liquid
-					else if (b.isBlockNormalCube) BlockType.Solid
-					else BlockType.Complex
-				}
+		val typeStorage = Array.fill(lookVol.sizeX * lookVol.sizeY * lookVol.sizeZ)(BlockType.None)
+		def typeIndex(pos: BlockPos): Option[Int] =
+			if (lookVol contains pos)
+				Some(
+					((pos.x - lookVol.minX) * lookVol.sizeY + (pos.y - lookVol.minY )) * lookVol.sizeZ + (pos.z - lookVol.minZ)
 				)
+			else None
+
+		def getType(pos: BlockPos): BlockType.BlockType =
+			if (isDead(pos.x, pos.z)) BlockType.Invalid
+			else typeIndex(pos) map { typeStorage(_) } getOrElse BlockType.Invalid
+
+		def setType(pos: BlockPos, t: BlockType.BlockType): Unit = typeIndex(pos) foreach { typeStorage(_) = t }
+		// Perform full zone scan
+		// This is original lookup zone, extended by dead zone radius
+		val DeadMarkR = DeadR - EndpointR
+		for ( pt <- Utils.enumVolume(vol.minX - DeadR, 1, vol.minZ - DeadR, vol.maxX + DeadR, w.provider.getActualHeight - 1, vol.maxZ + DeadR))
+		{
+			// Mark all columns in other GW's hard dead radius as dead
+			for {
+				e <- w.getTileEntity(pt.x, pt.y, pt.z).as[tile.Core]
+				x1 <- pt.x - DeadMarkR to pt.x + DeadMarkR
+				z1 <- pt.z - DeadMarkR to pt.z + DeadMarkR
+			}
+				setDead(x1, z1, true)
+			// Qualify block only if it wasn't already qualified, or shadowed by dead zone
+			if (getType(pt) == BlockType.None)
+				setType(pt, BlockType.evalBlock(w, pt))
 		}
 		// Return getter func as-is
 		getType
 	}
 
-	private def ratePosition(x: Int, y: Int, z: Int, volume: VolumeFunc): Int =
+	private def ratePosition(pos: BlockPos, volume: VolumeFunc): Int =
 	{
 		import BlockType._
 		// Search for invalid blocks and lava in vicinity. Should prevent from dipping portal right into lava
 		val volumeRate = Utils
-			.enumVolume(x - EndpointR, y + 1, z - EndpointR, x + EndpointR, y + PortalPillarHeight + 1, z + EndpointR)
+			.enumVolume(pos.x - EndpointR, pos.y + 1, pos.z - EndpointR, pos.x + EndpointR, pos.y + PortalPillarHeight + 1, pos.z + EndpointR)
 			.foldLeft(0)
-		{ case (r, (x, y, z)) =>
-			volume(x, y, z) match {
+		{ case (r, pos) =>
+			volume(pos) match {
 				case Invalid | Liquid => Int.MaxValue
 				case _ => r
 			}
 		}
 		// Calculate rate of region where portal pillar is located, along with near exit zone
 		val pillarRate = Utils // Calculate ratings sum for upper part, which is pillar+shield
-			.enumVolume(x - 1, y + 1, z - 1, x + 1, y + PortalPillarHeight, z + 1)
+			.enumVolume(pos.x - 1, pos.y + 1, pos.z - 1, pos.x + 1, pos.y + PortalPillarHeight, pos.z + 1)
 			.foldLeft(volumeRate)
-		{ case (r, (x, y, z)) =>
+		{ case (r, pos) =>
 			if (r == Int.MaxValue) r
-			else volume(x, y, z) match {
+			else volume(pos) match {
 				case Solid => r + 2
 				case Complex => r + 1
 				case _ => r
@@ -169,11 +159,11 @@ object ExitLocator {
 		}
 
 		val rate = Utils // Calculate ratings for lower part, which is main platform + extension
-			.enumVolume(x - 2, y, z - 2, x + 2, y, z + 2)
+			.enumVolume(pos.x - 2, pos.y, pos.z - 2, pos.x + 2, pos.y, pos.z + 2)
 			.foldLeft(pillarRate)
-		{ case (r, (x, y, z)) =>
+		{ case (r, pos) =>
 			if (r == Int.MaxValue) r
-			else volume(x, y, z) match {
+			else volume(pos) match {
 				case Invalid => Int.MaxValue
 				case Solid => r
 				case _ => r + 1
@@ -181,7 +171,7 @@ object ExitLocator {
 		}
 
 		if (rate == Int.MaxValue) rate
-		else if (volume(x, y, z) == Anchor) rate - 1000000
+		else if (volume(pos) == Anchor) rate - 1000000
 		else rate
 	}
 

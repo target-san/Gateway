@@ -8,14 +8,15 @@ import net.minecraft.entity.Entity
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.util.{Vec3, ChunkCoordinates}
-import net.minecraft.world.WorldServer
+import net.minecraft.world.{World, WorldServer}
 import net.minecraftforge.common.MinecraftForge
 import net.minecraftforge.common.util.ForgeDirection
 import targetsan.mcmods.gateway._
 import targetsan.mcmods.gateway.Utils._
 
 class Core extends Gateway {
-	private var partnerPos: BlockPosD = null
+	private var partnerPos: BlockPos = null
+	private var partnerWorld: World = null
 	private var ownerId: UUID = null
 	private var ownerName = ""
 
@@ -51,7 +52,8 @@ class Core extends Gateway {
 
 		isAssembled = true
 
-		partnerPos = BlockPosD(partner)
+		partnerPos = BlockPos(partner)
+		partnerWorld = partner.getWorldObj
 		ownerId = owner.getGameProfile.getId
 		ownerName = owner.getGameProfile.getName
 		this.multiblockType = multiblockType
@@ -67,8 +69,7 @@ class Core extends Gateway {
 
 		// TODO: deconstruct multiblock here
 
-		partnerPos
-			.world
+		partnerWorld
 			.getTileEntity(partnerPos.x, partnerPos.y, partnerPos.z)
 			.as[Core]
 			.foreach { _.invalidate() }
@@ -106,8 +107,8 @@ class Core extends Gateway {
 			entity,
 			new ChunkCoordinates(xCoord, yCoord, zCoord),
 			worldObj,
-			partnerPos.noWorld.chunkCoordinates,
-			partnerPos.world,
+			partnerPos.toChunkCoordinates,
+			partnerWorld,
 			Vec3.createVectorHelper(ex, ey, ez))
 
 		if (MinecraftForge.EVENT_BUS.post(enterEvent))
@@ -126,8 +127,8 @@ class Core extends Gateway {
 				newEntity,
 				new ChunkCoordinates(xCoord, yCoord, zCoord),
 				worldObj,
-				partnerPos.noWorld.chunkCoordinates,
-				partnerPos.world)
+				partnerPos.toChunkCoordinates,
+				partnerWorld)
 		)
 
 	}
@@ -169,7 +170,8 @@ class Core extends Gateway {
 
 		// partner node pos is encoded as 4 ints - x, y, z, dimension id
 		val coords = tag.getIntArray(PARTNER_POS_TAG)
-		partnerPos = BlockPosD(coords(0), coords(1), coords(2), coords(3))
+		partnerPos = BlockPos(coords(0), coords(1), coords(2))
+		partnerWorld = Utils.world(coords(3))
 
 		// owner name and flags are trivial
 		ownerName = tag.getString(OWNER_NAME_TAG)
@@ -187,7 +189,7 @@ class Core extends Gateway {
 		)
 		// Store partner position
 		tag.setIntArray(PARTNER_POS_TAG,
-			Array[Int](partnerPos.x, partnerPos.y, partnerPos.z, partnerPos.dim)
+			Array[Int](partnerPos.x, partnerPos.y, partnerPos.z, partnerWorld.provider.dimensionId)
 		)
 		// Other fields are trivial
 		tag.setString(OWNER_NAME_TAG, ownerName)
