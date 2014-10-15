@@ -15,7 +15,7 @@ import targetsan.mcmods.gateway._
 import targetsan.mcmods.gateway.Utils._
 
 class Core extends Gateway {
-	private var partnerPos: BlockPos = null
+	private var partnerPos: BlockPosD = null
 	private var ownerId: UUID = null
 	private var ownerName = ""
 
@@ -51,7 +51,7 @@ class Core extends Gateway {
 
 		isAssembled = true
 
-		partnerPos = new BlockPos(partner)
+		partnerPos = BlockPosD(partner)
 		ownerId = owner.getGameProfile.getId
 		ownerName = owner.getGameProfile.getName
 		this.multiblockType = multiblockType
@@ -106,7 +106,7 @@ class Core extends Gateway {
 			entity,
 			new ChunkCoordinates(xCoord, yCoord, zCoord),
 			worldObj,
-			partnerPos.chunkCoordinates,
+			partnerPos.noWorld.chunkCoordinates,
 			partnerPos.world,
 			Vec3.createVectorHelper(ex, ey, ez))
 
@@ -126,7 +126,7 @@ class Core extends Gateway {
 				newEntity,
 				new ChunkCoordinates(xCoord, yCoord, zCoord),
 				worldObj,
-				partnerPos.chunkCoordinates,
+				partnerPos.noWorld.chunkCoordinates,
 				partnerPos.world)
 		)
 
@@ -169,7 +169,7 @@ class Core extends Gateway {
 
 		// partner node pos is encoded as 4 ints - x, y, z, dimension id
 		val coords = tag.getIntArray(PARTNER_POS_TAG)
-		partnerPos = new BlockPos(coords(0), coords(1), coords(2), coords(3))
+		partnerPos = BlockPosD(coords(0), coords(1), coords(2), coords(3))
 
 		// owner name and flags are trivial
 		ownerName = tag.getString(OWNER_NAME_TAG)
@@ -197,7 +197,7 @@ class Core extends Gateway {
 	// Teleport helpers
 	//******************************************************************************************************************
 
-	def getExitPos(entity: Entity) =
+	private def getExitPos(entity: Entity) =
 		translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord))
 	// Transposes specified set of coordinates along vector specified by this and source TEs' coords
 	private def translateCoordEnterToExit(coord: (Double, Double, Double)): (Double, Double, Double) =

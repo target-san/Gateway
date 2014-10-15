@@ -28,7 +28,7 @@ class Gateway extends BlockContainer(Material.rock)
 	setBlockTextureName("gateway:smooth_obsidian")
 
 	val CoreMeta = 0
-	val PerimeterMetas = 1 to 9
+	val PerimeterMetas = 1 to 8
 
 	//******************************************************************************************************************
 	// TileEntity

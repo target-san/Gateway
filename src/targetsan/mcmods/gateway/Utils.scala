@@ -22,26 +22,43 @@ package object Utils
 		(field & (~mask)) | ((bits << offset) & mask)
 	}
 
-	case class ChunkPos(x: Int, z: Int, world: World) {
-		def this(chunk: Chunk) =
-			this(chunk.xPosition, chunk.zPosition, chunk.worldObj)
+	case class ChunkPos(x: Int, z: Int) {
+		def withWorld(world: World) = ChunkPosD(x, z, world)
+		def withDim(dim: Int): ChunkPosD = withWorld(Utils.world(dim))
 	}
-	case class BlockPos(x: Int, y: Int, z: Int, world: World) {
-		def chunk = ChunkPos(x >> 4, z >> 4, world)
+	object ChunkPos {
+		def apply(chunk: Chunk): ChunkPos = ChunkPos(chunk.xPosition, chunk.zPosition)
+	}
+
+	case class ChunkPosD(x: Int, z: Int, world: World) {
+		def noWorld = ChunkPos(x, z)
+	}
+	object ChunkPosD {
+		def apply(chunk: Chunk): ChunkPosD = ChunkPosD(chunk.xPosition, chunk.zPosition, chunk.worldObj)
+		def apply(x: Int, y: Int, dim: Int): ChunkPosD = ChunkPos(x, y).withDim(dim)
+	}
+
+	case class BlockPos(x: Int, y: Int, z: Int) {
+		def withWorld(world: World) = BlockPosD(x, y, z, world)
+		def withDim(dim: Int): BlockPosD = withWorld(Utils.world(dim))
+
+		def chunk = ChunkPos(x >> 4, z >> 4)
 		def chunkCoordinates = new ChunkCoordinates(x, y, z)
+
+		def + (that: BlockPos) = BlockPos(x + that.x, y + that.y, z + that.z)
+		def - (that: BlockPos) = BlockPos(x - that.x, y - that.y, z - that.z)
+	}
+	object BlockPos {
+		def apply(tile: TileEntity): BlockPos = BlockPos(tile.xCoord, tile.yCoord, tile.zCoord)
+	}
+
+	case class BlockPosD(x: Int, y: Int, z: Int, world: World) {
+		def noWorld = BlockPos(x, y, z)
 		def dim = world.provider.dimensionId
-
-		def this(tile: TileEntity) =
-			this(tile.xCoord, tile.yCoord, tile.zCoord, tile.getWorldObj)
-		def this(coords: ChunkCoordinates, world: World) =
-			this(coords.posX, coords.posY, coords.posZ, world)
-		def this(x: Int, y: Int, z: Int, dimId: Int) =
-			this(x, y, z, Utils.world(dimId))
-
-		def + (that: BlockPos) = BlockPos(x + that.x, y + that.y, z + that.z, world)
-
-		def + (dir: ForgeDirection) = BlockPos(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ, world)
-		def - (dir: ForgeDirection) = this + dir.getOpposite
+	}
+	object BlockPosD {
+		def apply(tile: TileEntity): BlockPosD = BlockPos(tile).withWorld(tile.getWorldObj)
+		def apply(x: Int, y: Int, z: Int, dim: Int): BlockPosD = BlockPos(x, y, z).withDim(dim)
 	}
 
 	def offsetToDirection(x: Int, y: Int, z: Int): ForgeDirection =
@@ -66,8 +83,10 @@ package object Utils
 
 	def world(dim: Int) = MinecraftServer.getServer.worldServerForDimension(dim)
 
-	def enumVolume(x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int) =
+	def enumVolume(x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int): Seq[(Int, Int, Int)] =
 		for (x <- x1 to x2; y <- y1 to y2; z <- z1 to z2) yield (x, y, z)
+
+	def enumVolume(min: BlockPos, max: BlockPos): Seq[(Int, Int, Int)] = enumVolume(min.x, min.y, min.z, max.x, max.y, max.z)
 
 	def bottomMount(entity: Entity): Entity =
 		if (entity == null) null

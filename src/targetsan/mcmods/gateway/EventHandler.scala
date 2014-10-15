@@ -20,8 +20,8 @@ object EventHandler
 		if (event.world.isRemote) // client-only
 		if (Loader.isModLoaded("NotEnoughItems")) {
 			// makes sense only for NEI
-			codechicken.nei.api.API.hideItem(new ItemStack(Blocks.Gateway, 1, OreDictionary.WILDCARD_VALUE))
-			codechicken.nei.api.API.hideItem(new ItemStack(Blocks.Pillar, 1, OreDictionary.WILDCARD_VALUE))
+			codechicken.nei.api.API.hideItem(new ItemStack(Assets.BlockGateway, 1, OreDictionary.WILDCARD_VALUE))
+			codechicken.nei.api.API.hideItem(new ItemStack(Assets.BlockPillar, 1, OreDictionary.WILDCARD_VALUE))
 		}
 
 	// Used to handle unload watchers when they're needed
@@ -65,5 +65,5 @@ object EventHandler
 			event.setCanceled(true)
 
 	private def isGatewayUnderEntity(entity: Entity, world: World, x: Double, y: Double, z: Double): Boolean =
-		world.getBlock(Math.floor(x).toInt, Math.floor(y - entity.yOffset).toInt - 1, Math.floor(z).toInt) == Blocks.Gateway
+		world.getBlock(Math.floor(x).toInt, Math.floor(y - entity.yOffset).toInt - 1, Math.floor(z).toInt) == Assets.BlockGateway
 }
