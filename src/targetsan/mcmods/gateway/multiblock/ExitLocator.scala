@@ -1,6 +1,5 @@
 package targetsan.mcmods.gateway.multiblock
 
-import net.minecraft.block.BlockLiquid
 import net.minecraft.init.Blocks
 import net.minecraft.world.World
 import targetsan.mcmods.gateway._
@@ -43,14 +42,12 @@ object ExitLocator {
 			.partition(_._2  < 0)
 
 		anchors.length match {
-			case 1 => // exactly one anchor, as expected
-				Right(anchors.head._1)
-			case 0 => // no anchors, so just use most suitable
-				normals.headOption match {
-					case Some((pos, _)) => Right(pos)
-					case _ => Left("Gateway cannot open - there are obstacles on the other side. Might be other gateway too near")
-				}
-			case _ => Left("More than one usable anchor detected, so portal cannot open. Please remove all except one, or let it open by itself")
+			// exactly one anchor, as expected
+			case 1 => Right(anchors.head._1)
+			// no anchors, so just use most suitable
+			case 0 => normals.headOption map { i => Right(i._1) } getOrElse Left("error.exit-lookup.not-found")
+			// More than one anchor
+			case _ => Left("error.exit-lookup.multiple-anchors")
 		}
 	}
 
