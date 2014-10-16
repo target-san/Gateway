@@ -8,33 +8,30 @@ import targetsan.mcmods.gateway.Utils._
 /** Locates suitable exit point based on location rating algorithm
   */
 object ExitLocator {
-	// Proper scan algorithm
-	def findExit(fromWorld: World, fromPos: BlockPos): Either[String, BlockPos] = {
+	// Searches for suitable exit point in Nether
+	def netherExit(from: World, start: BlockPos): Either[String, BlockPos] = {
 		val to = Utils.interDimension
-		val center = translatePoint(fromWorld, fromPos, to)
-		val LookupH = to.provider.getActualHeight / HeightFractions
-		val offset = BlockPos(LookupR, LookupH, LookupR)
+
+		def mapCoord(c: Int) = Math.floor(c * from.provider.getMovementFactor / to.provider.getMovementFactor).toInt
+
+		val DeltaH = 5 // horizontal search deviation
+		val DeltaV = to.provider.getActualHeight / 4 // vertical search deviation
+
+		val offset = BlockPos(DeltaH, DeltaV, DeltaH)
+		val center = BlockPos(mapCoord(start.x), to.provider.getActualHeight / 2, mapCoord(start.z))
 
 		findExit(to, center - offset to center + offset, center)
-	}
-
-	private def translatePoint(from: World, pos: BlockPos, to: World): BlockPos =
-	{
-		def mapCoord(c: Int) = Math.floor(c * from.provider.getMovementFactor / to.provider.getMovementFactor).toInt
-		BlockPos(mapCoord(pos.x), (to.provider.getActualHeight - 1) / 2, mapCoord(pos.z))
 	}
 
 	private def findExit(world: World, vol: Volume, center: BlockPos): Either[String, BlockPos] =
 	{
 		def sqr(x: Int) = x * x
-		val volFunc = scanVolume(world, vol)
-
 		def distFactor(pos: BlockPos): Double =
 			Math.log(sqr(pos.x - center.x) + sqr((pos.y - center.y) / 2) + sqr(pos.z - center.z) + 1)
 
-		val (anchors, normals) = vol
-			.enum
-			.view
+		val volFunc = scanVolume(world, vol)
+
+		val (anchors, normals) = vol.enum.view
 			.map(pos => (pos, ratePosition(pos, volFunc) ) ) // calculate position-independent rates
 			.filter(_._2 != Int.MaxValue) // Get rid of invalid positions
 			.map({ case (pos, r) => (pos, r + distFactor(pos)) }) // Add distance factor
@@ -71,9 +68,7 @@ object ExitLocator {
 	// So presence of other gateways is marked by 'Invalid' type, returned in certain radius
 	// Which is 1 less than dead zone - because endpoint radius is 1
 	private val DeadR = 8
-	private val LookupR = 5
 	private val EndpointR = 3
-	private val HeightFractions = 4 // N, used for 1/Nth of actual dimension height
 	private val PortalPillarHeight = 3
 
 	private type VolumeFunc = BlockPos => BlockType.BlockType
