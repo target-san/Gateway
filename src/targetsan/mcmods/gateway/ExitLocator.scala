@@ -1,8 +1,7 @@
-package targetsan.mcmods.gateway.multiblock
+package targetsan.mcmods.gateway
 
 import net.minecraft.init.Blocks
 import net.minecraft.world.World
-import targetsan.mcmods.gateway._
 import targetsan.mcmods.gateway.Utils._
 
 /** Locates suitable exit point based on location rating algorithm
@@ -126,7 +125,7 @@ object ExitLocator {
 
 	private def ratePosition(pos: BlockPos, volume: VolumeFunc): Int =
 	{
-		import BlockType._
+		import targetsan.mcmods.gateway.ExitLocator.BlockType._
 		// Search for invalid blocks and lava in vicinity. Should prevent from dipping portal right into lava
 		val volumeRate = Utils
 			.enumVolume(pos.x - EndpointR, pos.y + 1, pos.z - EndpointR, pos.x + EndpointR, pos.y + PortalPillarHeight + 1, pos.z + EndpointR)

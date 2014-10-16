@@ -26,6 +26,10 @@ abstract class Gateway extends TileEntity
 	protected def getFlag(offset: Int) = getState(offset, 1) != 0
 	protected def setFlag(offset: Int, value: Boolean) = setState(offset, 1, if (value) 1 else 0)
 
+	// Multiblock control
+	def isAssembled: Boolean
+	protected def isAssembled_= (value: Boolean): Unit
+
 	override def readFromNBT(tag: NBTTagCompound): Unit = {
 		super.readFromNBT(tag)
 		stateFlags = tag.getInteger(STATE_FLAGS_TAG)

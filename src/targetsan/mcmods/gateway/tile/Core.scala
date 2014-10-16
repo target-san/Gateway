@@ -26,8 +26,8 @@ class Core extends Gateway {
 
 	// Multiblock assembled marker
 	// size: 1 offset: 0
-	private def isAssembled = getFlag(0)
-	private def isAssembled_= (value: Boolean) { setFlag(0, value) }
+	override def isAssembled = getFlag(0)
+	override def isAssembled_= (value: Boolean): Unit = { setFlag(0, value) }
 
 	// All public funcs should check this, ensures that gateway multiblock is assembled, and we're on logical server
 	private def isAlive = !worldObj.isRemote && isAssembled

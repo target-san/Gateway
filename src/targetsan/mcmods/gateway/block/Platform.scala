@@ -17,14 +17,14 @@ import targetsan.mcmods.gateway.Utils._
  *  Meta 0 is a core
  *  Meta 1..8 are blocks of platform perimeter
  */
-class Gateway extends BlockContainer(Material.rock)
+class Platform extends BlockContainer(Material.rock)
 	with TeleportActor
 	with DropsNothing
 	with Unbreakable
 	with NoCreativePick
 {
 	disableStats()
-	setBlockName("gateway:gateway")
+	setBlockName("gateway:platform")
 	setBlockTextureName("gateway:smooth_obsidian")
 
 	val CoreMeta = 0

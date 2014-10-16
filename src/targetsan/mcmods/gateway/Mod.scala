@@ -13,11 +13,11 @@ object GatewayMod {
     @Mod.EventHandler
 	def init(event: FMLInitializationEvent): Unit =
 	{
-		GameRegistry.registerBlock(Assets.BlockGateway, "gateway")
+		GameRegistry.registerBlock(Assets.BlockPlatform, "platform")
 		GameRegistry.registerBlock(Assets.BlockPillar, "pillar")
 
-		GameRegistry.registerTileEntity(classOf[tile.Core],  "gateway-core")
-		GameRegistry.registerTileEntity(classOf[tile.Perimeter], "gateway-perimeter")
+		GameRegistry.registerTileEntity(classOf[tile.Core],  "platform-core")
+		GameRegistry.registerTileEntity(classOf[tile.Perimeter], "platform-perimeter")
 	}
 
     @Mod.EventHandler
@@ -28,7 +28,7 @@ object GatewayMod {
 }
 
 object Assets {
-	val BlockGateway = new block.Gateway
+	val BlockPlatform = new block.Platform
 	val BlockPillar = new block.Pillar
 }
 
