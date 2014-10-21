@@ -27,17 +27,17 @@ class Platform extends BlockContainer(Material.rock)
 	setBlockName("gateway:platform")
 	setBlockTextureName("gateway:smooth_obsidian")
 
-	val CoreMeta = 0
-	val PerimeterMetas = 1 to 8
+	private lazy val Tiles = Multiblock.Parts
+		.filter { p => p.block == Assets.BlockPlatform && p.tile.nonEmpty }
+		.map { p => (p.meta, p.tile.get) }
+		.toMap
 
 	//******************************************************************************************************************
 	// TileEntity
 	//******************************************************************************************************************
-	override def hasTileEntity(meta: Int) = (meta == CoreMeta) || (PerimeterMetas contains meta)
+	override def hasTileEntity(meta: Int) = Tiles contains meta
 	override def createNewTileEntity(world: World, meta: Int) =
-		if (meta == CoreMeta) new tile.Core
-		else if (PerimeterMetas contains meta) new tile.Perimeter
-		else null
+		Tiles get meta map { _() } orNull
 
 	private def getTile(w: IBlockAccess, x: Int, y: Int, z: Int) = w.getTileEntity(x, y, z).as[tile.Gateway]
 

@@ -51,13 +51,17 @@ class Perimeter extends Gateway {
 	override def onActivated(player: EntityPlayer, side: ForgeDirection): Unit = {
 		super.onActivated(player, side)
 		if (!isAlive) return
+		// TODO: activation, should start disposal if activated by owner's flint'n'steel
 	}
 	override def onNeighborBlockChanged(): Unit = {
 		super.onNeighborBlockChanged()
 		if (!isAlive) return
+		// TODO: stop deconstruction, if fire on top has disappeared
+		// TODO: relay to linked tile, when linking is implemented
 	}
 	override def onNeighborTileChanged(tx: Int, ty: Int, tz: Int): Unit = {
 		super.onNeighborTileChanged(tx, ty, tz)
 		if (!isAlive) return
+		// TODO: relay to linked tile, when linking is implemented
 	}
 }
