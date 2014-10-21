@@ -24,10 +24,10 @@ class Perimeter extends Gateway {
 	override def isAssembled_= (value: Boolean): Unit = {
 		setFlag(0, value)
 		if (value) // if we're assembling, then read metadata and store for future use
-			setState(1, 3, getBlockMetadata - 1)
+			setState(4, 4, getBlockMetadata)
 	}
 
-	private def tileMeta = getState(1, 3) + 1
+	private def tileMeta = getState(4, 4)
 	private def isAlive = isAssembled && !worldObj.isRemote
 
 	//******************************************************************************************************************

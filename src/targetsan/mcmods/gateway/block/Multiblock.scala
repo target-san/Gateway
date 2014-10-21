@@ -20,7 +20,7 @@ object Multiblock {
 		if (event.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK) {
 			// TODO: start multiblock construction here
 		}
-
+	// Using common replacement procedure for now
 	def disassemble(world: World, pos: BlockPos): Unit =
 		for ( part <- Parts) {
 			val p = pos + part.offset
