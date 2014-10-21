@@ -1,21 +1,19 @@
 package targetsan.mcmods.gateway.tile
 
-import targetsan.mcmods.gateway
 import targetsan.mcmods.gateway._
 import targetsan.mcmods.gateway.Utils._
 
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraftforge.common.util.ForgeDirection
-import targetsan.mcmods.gateway.block.Multiblock
 
 class Perimeter extends Gateway {
 	//******************************************************************************************************************
 	// Some calculated fields
 	//******************************************************************************************************************
 	private lazy val CorePos =
-		Multiblock.Parts
-			.find { elem => elem._2._1 == Assets.BlockPlatform && elem._2._2 == tileSide }
-			.map { BlockPos(this) - _._1 }
+		block.Multiblock.Parts // Index by block type plus meta?
+			.find { elem => elem.block == Assets.BlockPlatform && elem.meta == tileSide }
+			.map { BlockPos(this) - _.offset }
 
 	//******************************************************************************************************************
 	// State flag field parts

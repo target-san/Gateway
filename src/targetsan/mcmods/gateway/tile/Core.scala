@@ -65,10 +65,13 @@ class Core extends Gateway {
 		if (!isAlive)
 			return
 
-		isAssembled = false
-
-		// TODO: deconstruct multiblock here
-
+		// Phase 1 - disassemble; this tile will be also marked
+		for (part <- block.Multiblock.Parts)
+			worldObj
+				.getTileEntity(xCoord + part.offset.x, yCoord + part.offset.y, zCoord + part.offset.z)
+				.as[tile.Gateway]
+				.foreach { _.isAssembled = false}
+		// Phase 3 - kill other side
 		partnerWorld
 			.getTileEntity(partnerPos.x, partnerPos.y, partnerPos.z)
 			.as[Core]

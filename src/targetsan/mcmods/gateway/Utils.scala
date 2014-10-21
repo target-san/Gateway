@@ -4,8 +4,6 @@ import net.minecraft.entity.Entity
 import net.minecraft.server.MinecraftServer
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.util.{IIcon, ChunkCoordinates}
-import net.minecraft.world.World
-import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.common.util.ForgeDirection
 
 import scala.collection.mutable.ListBuffer

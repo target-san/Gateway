@@ -5,21 +5,26 @@ import targetsan.mcmods.gateway.Assets
 import targetsan.mcmods.gateway.Utils._
 
 object Multiblock {
+	// Tired of using tuples
+	case class Part(block: Block, meta: Int, offset: BlockPos)
+
 	val PillarHeight = 3
 	// Map of all blocks included into this multiblock
-	lazy val Parts = Vector[(BlockPos, (Block, Int))](
-		/* C  */ BlockPos( 0, 0,  0) -> (Assets.BlockPlatform, 0),
-		/* NW */ BlockPos(-1, 0, -1) -> (Assets.BlockPlatform, 1),
-		/* N  */ BlockPos( 0, 0, -1) -> (Assets.BlockPlatform, 2),
-		/* NE */ BlockPos( 1, 0, -1) -> (Assets.BlockPlatform, 3),
-		/*  E */ BlockPos( 1, 0,  0) -> (Assets.BlockPlatform, 4),
-		/* SE */ BlockPos( 1, 0,  1) -> (Assets.BlockPlatform, 5),
-		/* S  */ BlockPos( 0, 0,  1) -> (Assets.BlockPlatform, 6),
-		/* SW */ BlockPos(-1, 0,  1) -> (Assets.BlockPlatform, 7),
-		/*  W */ BlockPos(-1, 0,  0) -> (Assets.BlockPlatform, 8),
+	import Assets._
+
+	lazy val Parts = Vector(
+		/* C  */ Part(BlockPlatform, 0, BlockPos( 0, 0,  0) ),
+		/* NW */ Part(BlockPlatform, 1, BlockPos(-1, 0, -1) ),
+		/* N  */ Part(BlockPlatform, 2, BlockPos( 0, 0, -1) ),
+		/* NE */ Part(BlockPlatform, 3, BlockPos( 1, 0, -1) ),
+		/*  E */ Part(BlockPlatform, 4, BlockPos( 1, 0,  0) ),
+		/* SE */ Part(BlockPlatform, 5, BlockPos( 1, 0,  1) ),
+		/* S  */ Part(BlockPlatform, 6, BlockPos( 0, 0,  1) ),
+		/* SW */ Part(BlockPlatform, 7, BlockPos(-1, 0,  1) ),
+		/*  W */ Part(BlockPlatform, 8, BlockPos(-1, 0,  0) ),
 		// Pillar
-		/*  1 */ BlockPos( 0, 1,  0) -> (Assets.BlockPillar,  0),
-		/*  2 */ BlockPos( 0, 2,  0) -> (Assets.BlockPillar,  0),
-		/*  3 */ BlockPos( 0, 3,  0) -> (Assets.BlockPillar,  0)
+		/*  1 */ Part(BlockPillar,   0, BlockPos( 0, 1,  0) ),
+		/*  2 */ Part(BlockPillar,   0, BlockPos( 0, 2,  0) ),
+		/*  3 */ Part(BlockPillar,   0, BlockPos( 0, 3,  0) )
 	)
 }
