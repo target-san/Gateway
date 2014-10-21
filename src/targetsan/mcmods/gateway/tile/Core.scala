@@ -57,6 +57,13 @@ class Core extends Gateway {
 		ownerId = owner.getGameProfile.getId
 		ownerName = owner.getGameProfile.getName
 		this.multiblockType = multiblockType
+
+		for (part <- block.Multiblock.Parts)
+			worldObj
+				.getTileEntity(xCoord + part.offset.x, yCoord + part.offset.y, zCoord + part.offset.z)
+				.as[tile.Gateway]
+				.foreach { _.isAssembled = true }
+
 		markDirty()
 	}
 
@@ -73,9 +80,7 @@ class Core extends Gateway {
 				.as[tile.Gateway]
 				.foreach { _.isAssembled = false}
 		// Phase 2 - remove all
-		for (part <- block.Multiblock.Parts) {
-			// TODO: replace with proper dismantling code
-		}
+		block.Multiblock.disassemble(worldObj, BlockPos(this))
 		// Phase 3 - kill other side
 		partnerWorld
 			.getTileEntity(partnerPos.x, partnerPos.y, partnerPos.z)

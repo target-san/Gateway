@@ -2,7 +2,9 @@ package targetsan.mcmods.gateway.block
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent
 import net.minecraft.block.Block
+import net.minecraft.init.Blocks
 import net.minecraft.tileentity.TileEntity
+import net.minecraft.world.World
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import targetsan.mcmods.gateway._
 import targetsan.mcmods.gateway.Utils._
@@ -18,6 +20,22 @@ object Multiblock {
 		if (event.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK) {
 			// TODO: start multiblock construction here
 		}
+
+	def disassemble(world: World, pos: BlockPos): Unit =
+		for ( part <- Parts) {
+			val p = pos + part.offset
+			part.block match {
+				case Assets.BlockPillar =>
+					world.setBlockToAir(p.x, p.y, p.z)
+				case Assets.BlockPlatform =>
+					world.setBlock(p.x, p.y, p.z,
+						if      (part.meta == 0)     Blocks.netherrack
+						else if (part.meta % 2 == 0) Blocks.gravel
+						else                         Blocks.obsidian
+					)
+			}
+		}
+
 	// Tired of using tuples
 	case class Part(block: Block, meta: Int, offset: BlockPos, tile: Option[() => TileEntity])
 

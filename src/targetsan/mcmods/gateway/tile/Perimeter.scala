@@ -12,7 +12,7 @@ class Perimeter extends Gateway {
 	//******************************************************************************************************************
 	private lazy val CorePos =
 		block.Multiblock.Parts // Index by block type plus meta?
-			.find { elem => elem.block == Assets.BlockPlatform && elem.meta == tileSide }
+			.find { elem => elem.block == Assets.BlockPlatform && elem.meta == tileMeta }
 			.map { BlockPos(this) - _.offset }
 
 	//******************************************************************************************************************
@@ -27,7 +27,7 @@ class Perimeter extends Gateway {
 			setState(1, 3, getBlockMetadata - 1)
 	}
 
-	private def tileSide = getState(1, 3) + 1
+	private def tileMeta = getState(1, 3) + 1
 	private def isAlive = isAssembled && !worldObj.isRemote
 
 	//******************************************************************************************************************
