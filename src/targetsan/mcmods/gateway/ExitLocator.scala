@@ -8,8 +8,11 @@ import targetsan.mcmods.gateway.Utils._
   */
 object ExitLocator {
 	// Searches for suitable exit point in Nether
-	def netherExit(from: World, start: BlockPos): Either[String, BlockPos] = {
+	def netherExit(from: World, start: BlockPos): Either[String, (BlockPos, World)] = {
 		val to = Utils.interDimension
+
+		if (from.provider.dimensionId == to.provider.dimensionId)
+			return Left("error-same-dimension")
 
 		def mapCoord(c: Int) = Math.floor(c * from.provider.getMovementFactor / to.provider.getMovementFactor).toInt
 
@@ -20,6 +23,7 @@ object ExitLocator {
 		val center = BlockPos(mapCoord(start.x), to.provider.getActualHeight / 2, mapCoord(start.z))
 
 		findExit(to, center - offset to center + offset, center)
+			.right.map { (_, to) }
 	}
 
 	private def findExit(world: World, vol: Volume, center: BlockPos): Either[String, BlockPos] =

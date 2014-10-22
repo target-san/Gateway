@@ -10,16 +10,55 @@ import targetsan.mcmods.gateway._
 import targetsan.mcmods.gateway.Utils._
 
 object Multiblock {
+	// Tired of using tuples
+	case class Part(block: Block, meta: Int, offset: BlockPos, tile: Option[() => TileEntity])
+
 	@SubscribeEvent
 	def onFlintAndSteelPreUse(event: PlayerInteractEvent): Unit =
-		if (!event.entityPlayer.worldObj.isRemote) // Works only server-side
+		if (!event.world.isRemote) // Works only server-side
+        if (event.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK)
 		// We're interested in Flint'n'Steel clicking some block only
 		if (event.entityPlayer != null)
 		if (event.entityPlayer.getHeldItem != null)
 		if (event.entityPlayer.getHeldItem.getItem == net.minecraft.init.Items.flint_and_steel)
-		if (event.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK) {
-			// TODO: start multiblock construction here
+		if (ConstructFrom forall { // Check blocks in vicinity against multiblock pattern
+			p =>
+				val pos = BlockPos(event.x, event.y, event.z) + p.offset
+				event.world.getBlock(pos.x, pos.y, pos.z) == p.block &&
+					event.world.getBlockMetadata(pos.x, pos.y, pos.z) == p.meta
+		})
+		ExitLocator.netherExit(event.world, BlockPos(event.x, event.y, event.z)) match {
+			case Left(msg) => // TODO: print message here
+			case Right((toPos, toWorld)) =>
+				val fromPos = BlockPos(event.x, event.y, event.z)
+				val fromWorld = event.world
+				// Construct raw blocks
+				rawAssemble(Parts, fromPos, event.world)
+				rawAssemble(NetherParts, toPos, toWorld)
+				// Initialize stuff
+				val fromTile = fromWorld.getTileEntity(fromPos.x, fromPos.y, fromPos.z).as[tile.Core].get
+				val toTile   = toWorld.getTileEntity(toPos.x, toPos.y, toPos.z).as[tile.Core].get
+
+				fromTile.init(event.entityPlayer, toTile, 0)
+				toTile.init(event.entityPlayer, fromTile, 0)
 		}
+
+	private lazy val ConstructFrom = Vector(
+		Part(Blocks.redstone_block, 0, BlockPos(0, 0, 0), None),
+		obsidian( -1, -1),
+		obsidian(  1, -1),
+		obsidian( -1,  1),
+		obsidian(  1,  1),
+		glass   ( -1,  0),
+		glass   (  1,  0),
+		glass   (  0, -1),
+		glass   (  0,  1)
+	)
+
+	private def obsidian(dx: Int, dz: Int) =
+		Part(Blocks.obsidian, 0, BlockPos(dx, 0, dz), None)
+	private def glass(dx: Int, dz: Int) =
+		Part(Blocks.glass, 0, BlockPos(dx, 0, dz), None)
 	// Using common replacement procedure for now
 	def disassemble(world: World, pos: BlockPos): Unit =
 		for ( part <- Parts) {
@@ -33,11 +72,9 @@ object Multiblock {
 						else if (part.meta % 2 == 0) Blocks.gravel
 						else                         Blocks.obsidian
 					)
+				case _ => ()
 			}
 		}
-
-	// Tired of using tuples
-	case class Part(block: Block, meta: Int, offset: BlockPos, tile: Option[() => TileEntity])
 
 	val PillarHeight = 3
 	// Map of all blocks included into this multiblock
@@ -56,6 +93,12 @@ object Multiblock {
 		/*  2 */ pillar   ( dy = 2 ),
 		/*  3 */ pillar   ( dy = 3 )
 	)
+	// Used only in nether, adds air blocks around
+	private lazy val NetherParts =
+		Parts ++ {
+			for ( dx <- -1 to 1; dy <-  1 to PillarHeight; dz <- -1 to 1; if dx != 0 && dz != 0)
+				yield Part(Blocks.air, 0, BlockPos(dx, dy, dz), None)
+		}
 
 	private def perimeter(meta: Int, dx: Int, dz: Int) =
 		Part( Assets.BlockPlatform, meta, BlockPos(dx,  0, dz), Some( () => new tile.Perimeter) )
@@ -63,4 +106,7 @@ object Multiblock {
 	private def pillar(dy: Int) =
 		Part( Assets.BlockPillar,   0,    BlockPos( 0, dy,  0), None )
 
+	private def rawAssemble(parts: Seq[Part], pos: BlockPos, world: World) =
+		for ( p <- parts )
+			world.setBlock(pos.x + p.offset.x, pos.y + p.offset.y, pos.z + p.offset.z, p.block, p.meta, 3)
 }

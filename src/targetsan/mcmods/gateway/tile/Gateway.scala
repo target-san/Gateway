@@ -28,7 +28,7 @@ abstract class Gateway extends TileEntity
 
 	// Multiblock control
 	def isAssembled: Boolean
-	protected def isAssembled_= (value: Boolean): Unit
+	protected[tile] def isAssembled_= (value: Boolean): Unit
 
 	override def readFromNBT(tag: NBTTagCompound): Unit = {
 		super.readFromNBT(tag)

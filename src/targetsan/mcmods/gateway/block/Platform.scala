@@ -70,7 +70,7 @@ class Platform extends BlockContainer(Material.rock)
 	override def registerBlockIcons(icons: IIconRegister) =
 	{
 		// Load base icons
-		val topCenter = icons.registerIcon("gateway:core")
+		val topCenter = icons.registerIcon("gateway:top-center")
 		val topCorner = icons.registerIcon("gateway:top-corner")
 		val topSide = icons.registerIcon("gateway:top-side")
 		val topSide90 = icons.registerIcon("gateway:top-side-90")
