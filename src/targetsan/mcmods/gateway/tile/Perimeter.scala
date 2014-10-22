@@ -1,5 +1,6 @@
 package targetsan.mcmods.gateway.tile
 
+import net.minecraft.init.{Blocks, Items}
 import targetsan.mcmods.gateway._
 import targetsan.mcmods.gateway.Utils._
 
@@ -14,6 +15,7 @@ class Perimeter extends Gateway {
 		block.Multiblock.Parts // Index by block type plus meta?
 			.find { elem => elem.block == Assets.BlockPlatform && elem.meta == tileMeta }
 			.map { BlockPos(this) - _.offset }
+	private def coreTile = CorePos flatMap { p => worldObj.getTileEntity(p.x, p.y, p.z).as[Core] }
 
 	//******************************************************************************************************************
 	// State flag field parts
@@ -39,11 +41,7 @@ class Perimeter extends Gateway {
 		// This one isn't a part of multiblock anymore
 		isAssembled = false
 		// Invalidate core, so we're starting disassembly sequence
-		for {
-			pos <- CorePos
-			tile <- worldObj.getTileEntity(pos.x, pos.y, pos.z).as[tile.Core]
-		}
-			tile.invalidate()
+		coreTile foreach { _.invalidate() }
 	}
 	//******************************************************************************************************************
 	// Logic overrides
@@ -51,12 +49,18 @@ class Perimeter extends Gateway {
 	override def onActivated(player: EntityPlayer, side: ForgeDirection): Unit = {
 		super.onActivated(player, side)
 		if (!isAlive) return
-		// TODO: activation, should start disposal if activated by owner's flint'n'steel
+
+		if (player != null)
+		if (player.getHeldItem != null)
+		if (player.getHeldItem.getItem == Items.flint_and_steel)
+			coreTile foreach { _.startDisposeFrom(player, BlockPos(this)) }
 	}
 	override def onNeighborBlockChanged(): Unit = {
 		super.onNeighborBlockChanged()
 		if (!isAlive) return
-		// TODO: stop deconstruction, if fire on top has disappeared
+
+		if (worldObj.getBlock(xCoord, yCoord + 1, zCoord) != Blocks.fire)
+			coreTile foreach { _.stopDisposeFrom(BlockPos(this)) }
 		// TODO: relay to linked tile, when linking is implemented
 	}
 	override def onNeighborTileChanged(tx: Int, ty: Int, tz: Int): Unit = {

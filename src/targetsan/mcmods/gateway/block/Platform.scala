@@ -14,8 +14,6 @@ import targetsan.mcmods.gateway.Utils._
 
 /** Represents gateway's solid platform tiles
  *  Platform is intended to be 3x3
- *  Meta 0 is a core
- *  Meta 1..8 are blocks of platform perimeter
  */
 class Platform extends BlockContainer(Material.rock)
 	with TeleportActor

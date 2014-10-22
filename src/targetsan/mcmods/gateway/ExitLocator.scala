@@ -12,7 +12,7 @@ object ExitLocator {
 		val to = Utils.interDimension
 
 		if (from.provider.dimensionId == to.provider.dimensionId)
-			return Left("error-same-dimension")
+			return Left("error.wrong-dimension")
 
 		def mapCoord(c: Int) = Math.floor(c * from.provider.getMovementFactor / to.provider.getMovementFactor).toInt
 

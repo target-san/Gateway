@@ -1,9 +1,10 @@
 package targetsan.mcmods.gateway
 
 import net.minecraft.entity.Entity
+import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.server.MinecraftServer
 import net.minecraft.tileentity.TileEntity
-import net.minecraft.util.{IIcon, ChunkCoordinates}
+import net.minecraft.util._
 import net.minecraftforge.common.util.ForgeDirection
 
 import scala.collection.mutable.ListBuffer
@@ -85,6 +86,8 @@ package object Utils
 			case _ => ForgeDirection.UNKNOWN
 		}
 
+	def offsetToDirection(offset: BlockPos): ForgeDirection = offsetToDirection(offset.x, offset.y, offset.z)
+
 	val NetherDimensionId = -1
 	val EndDimensionId = 1
 
@@ -145,5 +148,17 @@ package object Utils
 				case tag(typed) => Some(typed)
 				case _ => None
 			}
+	}
+
+	object Chat {
+		def ok(player: EntityPlayer, message: String, args: Object*): Unit =
+			player.addChatComponentMessage(colorChat(EnumChatFormatting.GREEN, message, args: _*))
+		def warn(player: EntityPlayer, message: String, args: Object*): Unit =
+			player.addChatComponentMessage(colorChat(EnumChatFormatting.YELLOW, message, args: _*))
+		def error(player: EntityPlayer, message: String, args: Object*): Unit =
+			player.addChatComponentMessage(colorChat(EnumChatFormatting.RED, message, args: _*))
+
+		private def colorChat(color: EnumChatFormatting, message: String, args: Object*) =
+			new ChatComponentTranslation(message, args: _*).setChatStyle(new ChatStyle().setColor(color))
 	}
 }

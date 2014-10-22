@@ -28,7 +28,7 @@ object Multiblock {
 					event.world.getBlockMetadata(pos.x, pos.y, pos.z) == p.meta
 		})
 		ExitLocator.netherExit(event.world, BlockPos(event.x, event.y, event.z)) match {
-			case Left(msg) => // TODO: print message here
+			case Left(msg) => Chat.error(event.entityPlayer, msg)
 			case Right((toPos, toWorld)) =>
 				val fromPos = BlockPos(event.x, event.y, event.z)
 				val fromWorld = event.world
@@ -41,6 +41,8 @@ object Multiblock {
 
 				fromTile.init(event.entityPlayer, toTile, 0)
 				toTile.init(event.entityPlayer, fromTile, 0)
+
+				Chat.ok(event.entityPlayer, "ok.gateway-constructed", fromWorld.provider.getDimensionName, toWorld.provider.getDimensionName)
 		}
 
 	private lazy val ConstructFrom = Vector(

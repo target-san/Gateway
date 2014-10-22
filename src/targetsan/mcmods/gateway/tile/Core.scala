@@ -10,7 +10,6 @@ import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.util.{Vec3, ChunkCoordinates}
 import net.minecraft.world.{World, WorldServer}
 import net.minecraftforge.common.MinecraftForge
-import net.minecraftforge.common.util.ForgeDirection
 import targetsan.mcmods.gateway._
 import targetsan.mcmods.gateway.Utils._
 
@@ -39,7 +38,11 @@ class Core extends Gateway {
 
 	// Side disposal marks
 	// offset: 4, size: 4
-	private def setDisposalMark(side: Int, value: Boolean) = if (0 to 3 contains side) setFlag(4 + side, value)
+	private def tileToMark(tile: BlockPos) = offsetToDirection(tile - BlockPos(this)).ordinal() - 2
+
+	private def canMark(tile: BlockPos): Boolean = 0 to 3 contains tileToMark(tile)
+	private def setDisposalMark(tile: BlockPos, value: Boolean) =
+		if (canMark(tile)) setFlag(4 + tileToMark(tile), value)
 	private def areMarksSet = getState(4, 4) == 0x0F
 
 	//******************************************************************************************************************
@@ -149,19 +152,26 @@ class Core extends Gateway {
 	//******************************************************************************************************************
 	// In-game deconstruction
 	//******************************************************************************************************************
-	def startDispose(invoker: EntityPlayer, side: ForgeDirection): Unit = {
-		if (!isAlive || invoker == null || invoker.getGameProfile.getId != ownerId)
+	def startDisposeFrom(invoker: EntityPlayer, tile: BlockPos): Unit = {
+		if (!isAlive || invoker == null || !canMark(tile))
 			return
 
-		setDisposalMark(side.ordinal() - 2, value = true)
+		if (invoker.getGameProfile.getId != ownerId) {
+			Chat.error(invoker, "error.not-an-owner", ownerName)
+			return
+		}
 
-		if (areMarksSet)
+		setDisposalMark(tile, value = true)
+
+		if (areMarksSet) {
 			invalidate()
+			Chat.warn(invoker, "warn.gateway-closed", worldObj.provider.getDimensionName, partnerWorld.provider.getDimensionName)
+		}
 	}
 
-	def stopDispose(side: ForgeDirection): Unit =
+	def stopDisposeFrom(tile: BlockPos): Unit =
 		if (isAlive)
-			setDisposalMark(side.ordinal() - 2, value = false)
+			setDisposalMark(tile, value = false)
 
 	//******************************************************************************************************************
 	// Persistence
