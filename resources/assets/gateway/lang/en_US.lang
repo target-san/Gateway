@@ -3,7 +3,7 @@ gateway:warn.gateway-closed=Gateway from %s to %s closed
 gateway:error.not-an-owner=Only %s can remove this gateway
 gateway:error.wrong-dimension=Gateway cannot be constructed from this dimension
 gateway:error.exit-lookup.not-found=No suitable location was found to place gateway exit
-gateway:error.exit-lookup.multiple-anchors=There are multiple anchors found on the other side. Remove one or none so gateway can open
+gateway:error.exit-lookup.multiple-anchors=There are multiple anchors found on the other side. Leave one or none so gateway can open
 
 tile.gateway:platform.name=Gateway platform block
 
