@@ -31,11 +31,6 @@ class Core extends Gateway {
 	// All public funcs should check this, ensures that gateway multiblock is assembled, and we're on logical server
 	private def isAlive = !worldObj.isRemote && isAssembled
 
-	// Multiblock type, size: 3, offset: 1
-	// affects which disassembly function is used
-	private def multiblockType = getState(1, 3)
-	private def multiblockType_= (value: Int) = setState(1, 3, value)
-
 	// Side disposal marks
 	// offset: 4, size: 4
 	private def tileToMark(tile: BlockPos) = offsetToDirection(tile - BlockPos(this)).ordinal() - 2
@@ -48,7 +43,7 @@ class Core extends Gateway {
 	//******************************************************************************************************************
 	// Lifecycle control
 	//******************************************************************************************************************
-	def init(owner: EntityPlayer, partner: Core, multiblockType: Int): Unit = {
+	def init(owner: EntityPlayer, partner: Core): Unit = {
 		if (worldObj.isRemote) return // server only
 		if (isAssembled || isInvalid)
 			throw new IllegalStateException("Gateway core can be initialized only once. Init should be done only for valid tile")
@@ -59,7 +54,6 @@ class Core extends Gateway {
 		partnerWorld = partner.getWorldObj
 		ownerId = owner.getGameProfile.getId
 		ownerName = owner.getGameProfile.getName
-		this.multiblockType = multiblockType
 
 		for (part <- block.Multiblock.Parts)
 			worldObj

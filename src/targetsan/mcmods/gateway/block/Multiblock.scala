@@ -39,8 +39,8 @@ object Multiblock {
 				val fromTile = fromWorld.getTileEntity(fromPos.x, fromPos.y, fromPos.z).as[tile.Core].get
 				val toTile   = toWorld.getTileEntity(toPos.x, toPos.y, toPos.z).as[tile.Core].get
 
-				fromTile.init(event.entityPlayer, toTile, 0)
-				toTile.init(event.entityPlayer, fromTile, 0)
+				fromTile.init(event.entityPlayer, toTile)
+				toTile.init(event.entityPlayer, fromTile)
 
 				Chat.ok(event.entityPlayer, "ok.gateway-constructed", fromWorld.provider.getDimensionName, toWorld.provider.getDimensionName)
 		}
