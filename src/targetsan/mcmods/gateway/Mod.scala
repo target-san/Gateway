@@ -46,5 +46,3 @@ object Assets {
 			codechicken.nei.api.API.hideItem(new ItemStack(BlockPillar, 1, OreDictionary.WILDCARD_VALUE))
 		}
 }
-
-

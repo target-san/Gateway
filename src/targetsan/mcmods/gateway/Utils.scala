@@ -159,6 +159,6 @@ package object Utils
 			player.addChatComponentMessage(colorChat(EnumChatFormatting.RED, message, args: _*))
 
 		private def colorChat(color: EnumChatFormatting, message: String, args: Object*) =
-			new ChatComponentTranslation(message, args: _*).setChatStyle(new ChatStyle().setColor(color))
+			new ChatComponentTranslation(GatewayMod.MODID + ":" + message, args: _*).setChatStyle(new ChatStyle().setColor(color))
 	}
 }
