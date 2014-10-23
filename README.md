@@ -1,29 +1,7 @@
 Gateway
 =======
 
-# WARNING! Codebase is being refactored now and is in high flux. It doesn't even compile. I will make some tag when basic features are in-place again
-
 Cross-dimensional portals for Minecraft Forge done right and without overpower
-
-## Build
-
-Get sources, then just
-
-    gradlew build
-
-## Development
-
-Get sources, then
-
-    gradlew setupDecompWorkspace
-
-then, for your favorite IDE,
-
-    gradlew eclipse
-
-or
-
-    gradlew idea
 
 ## Overview
 
@@ -90,11 +68,33 @@ Though playing with gates isn't cost-free, as you will get back only obsidian. I
 
 1. Connectors - gateways should allow to pump items, liquids, power, AE cables and so on.
 
+## Build
+
+Get sources, then just
+
+    gradlew build
+
+## Development
+
+Get sources, then
+
+    gradlew setupDecompWorkspace
+
+then, for your favorite IDE,
+
+    gradlew eclipse
+
+or
+
+    gradlew idea
+
 ## TODO list
 
 1. End: gateway shouldn't be openable until dragon is dead
 2. End, Nether: achievements
 3. Some kind of locator tool - click on block in any world, then see corresponding search volume in Nether being visualized.
 4. Some method of less lossy gateway shutdown.
-5. Biometric control - check who can pass and who can't. Want to use existing biometrics API.
-6. Maybe, an OP variant which can be placed anywhere.
+5. Biometric control - check who can pass and who can't. Want to use existing biometrics API. Partially implemented - there are two events, one before travel, cancellable, and one after. This should allow to easily use any API via event hooks.
+
+## Dropped from consideration
+1. OP portals placeable anywhere - use Mystcraft/DimDoors/etc. for this matter
