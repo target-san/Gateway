@@ -54,16 +54,17 @@ object ExitLocator {
 	private object BlockType extends Enumeration
 	{
 		type BlockType = Value
-		val None, Invalid, Solid, Complex, Liquid, Air, Anchor = Value
+		val None, Invalid, Cuboid, ComplexShape, Liquid, Air, Anchor, TileLogic = Value
 
 		def evalBlock(world: World, pos: BlockPos): BlockType = {
 			val b = world.getBlock(pos.x, pos.y, pos.z)
-			if (b.getBlockHardness(world, pos.x, pos.y, pos.z) < 0) BlockType.Invalid
-			else if (b == Blocks.redstone_block) BlockType.Anchor
-			else if (b.isAir(world, pos.x, pos.y, pos.z)) BlockType.Air
-			else if (b.getMaterial.isLiquid) BlockType.Liquid
-			else if (b.isBlockNormalCube) BlockType.Solid
-			else BlockType.Complex
+			if (b.getBlockHardness(world, pos.x, pos.y, pos.z) < 0) Invalid
+			else if (world.getTileEntity(pos.x, pos.y, pos.z) != null) TileLogic
+			else if (b == Blocks.redstone_block) Anchor
+			else if (b.isAir(world, pos.x, pos.y, pos.z)) Air
+			else if (b.getMaterial.isLiquid) Liquid
+			else if (b.isBlockNormalCube) Cuboid
+			else ComplexShape
 		}
 	}
 	// Scans volume and returns mapping - coordinates to block type
@@ -147,8 +148,9 @@ object ExitLocator {
 		{ case (r, pos) =>
 			if (r == Int.MaxValue) r
 			else volume(pos) match {
-				case Solid => r + 2
-				case Complex => r + 1
+				case Invalid | TileLogic => Int.MaxValue
+				case Cuboid => r + 2
+				case ComplexShape => r + 1
 				case _ => r
 			}
 		}
@@ -159,8 +161,9 @@ object ExitLocator {
 		{ case (r, pos) =>
 			if (r == Int.MaxValue) r
 			else volume(pos) match {
-				case Invalid => Int.MaxValue
-				case Solid => r
+				case Invalid | TileLogic => Int.MaxValue
+				case Cuboid => r
+				case Air => r + 2
 				case _ => r + 1
 			}
 		}
