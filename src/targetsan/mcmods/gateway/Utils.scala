@@ -1,10 +1,15 @@
 package targetsan.mcmods.gateway
 
+import java.nio.ByteBuffer
+import java.util.UUID
+
 import net.minecraft.entity.Entity
 import net.minecraft.entity.player.EntityPlayer
+import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.server.MinecraftServer
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.util._
+import net.minecraft.world.World
 import net.minecraftforge.common.util.ForgeDirection
 
 import scala.collection.mutable.ListBuffer
@@ -20,8 +25,20 @@ package object Utils
 		val mask = maskOfSize(size) << offset
 		(field & (~mask)) | ((bits << offset) & mask)
 	}
+
 	// Equivalent to ChunkCoordinates, but immutable
-	class BlockPos private (val x: Int, val y: Int, val z: Int) {
+	final class BlockPos private (val x: Int, val y: Int, val z: Int) {
+		override def equals(that: Any): Boolean =
+			that match {
+				case r: BlockPos => x == r.x && y == r.y && z == r.z
+				case _ => false
+			}
+
+		override def hashCode: Int =
+			((y % 251) << 24) | ((x % 4093) << 12) | (z % 4093)
+
+		override def toString = s"BlockPos($x, $y, $z)"
+
 		def toChunkCoordinates = new ChunkCoordinates(x, y, z)
 
 		def unary_- = new BlockPos(-x, -y, -z)
@@ -39,6 +56,8 @@ package object Utils
 		def apply(x: Int, y: Int, z: Int) = new BlockPos(x, y, z)
 		def apply(tile: TileEntity) = new BlockPos(tile.xCoord, tile.yCoord, tile.zCoord)
 		def apply(coords: ChunkCoordinates) = new BlockPos(coords.posX, coords.posY, coords.posZ)
+
+		def unapply(pos: BlockPos): Option[(Int, Int, Int)] = Some((pos.x, pos.y, pos.z))
 	}
 
 	class Volume private (val minX: Int, val minY: Int, val minZ: Int, val maxX: Int, val maxY: Int, val maxZ: Int) {
@@ -148,6 +167,37 @@ package object Utils
 				case tag(typed) => Some(typed)
 				case _ => None
 			}
+	}
+
+	implicit class NBTUtils(tag: NBTTagCompound) {
+		// UUID is composed as 2 longs from 16-byte byte array
+		def getUUID(name: String): UUID = {
+			val id = ByteBuffer.wrap(tag.getByteArray(name))
+			val lower = id.getLong
+			val upper = id.getLong
+			new UUID(upper, lower)
+		}
+
+		// UUID is composed as 2 longs from 16-byte byte array
+		def setUUID(name: String, uuid: UUID): Unit = {
+			tag.setByteArray(name,
+				ByteBuffer.allocate(16)
+					.putLong(uuid.getLeastSignificantBits)
+					.putLong(uuid.getMostSignificantBits)
+					.array()
+			)
+		}
+
+		def getBlockPos4D(name: String): (BlockPos, World) = {
+			val coords = tag.getIntArray(name)
+			(BlockPos(coords(0), coords(1), coords(2)), Utils.world(coords(3)) )
+		}
+
+		def setBlockPos4D(name: String, pos: BlockPos, world: World): Unit = {
+			tag.setIntArray(name,
+				Array[Int](pos.x, pos.y, pos.z, world.provider.dimensionId)
+			)
+		}
 	}
 
 	object Chat {

@@ -179,36 +179,16 @@ class Core extends Gateway {
 	override def readFromNBT(tag: NBTTagCompound): Unit = {
 		super.readFromNBT(tag)
 
-		// owner's UUID is composed as 2 longs from 16-byte byte array
-		val id = ByteBuffer.wrap(tag.getByteArray(OWNER_ID_TAG))
-		val lower = id.getLong
-		val upper = id.getLong
-		ownerId = new UUID(upper, lower)
-
-		// partner node pos is encoded as 4 ints - x, y, z, dimension id
-		val coords = tag.getIntArray(PARTNER_POS_TAG)
-		partnerPos = BlockPos(coords(0), coords(1), coords(2))
-		partnerWorld = Utils.world(coords(3))
-
-		// owner name and flags are trivial
+ 		ownerId = tag.getUUID(OWNER_ID_TAG)
+		(partnerPos, partnerWorld) = tag.getBlockPos4D(PARTNER_POS_TAG)
 		ownerName = tag.getString(OWNER_NAME_TAG)
 	}
 
 	override def writeToNBT(tag: NBTTagCompound): Unit = {
 		super.writeToNBT(tag)
 
-		// Store owner's UUID
-		tag.setByteArray(OWNER_ID_TAG,
-			ByteBuffer.allocate(16)
-				.putLong(ownerId.getLeastSignificantBits)
-				.putLong(ownerId.getMostSignificantBits)
-				.array()
-		)
-		// Store partner position
-		tag.setIntArray(PARTNER_POS_TAG,
-			Array[Int](partnerPos.x, partnerPos.y, partnerPos.z, partnerWorld.provider.dimensionId)
-		)
-		// Other fields are trivial
+		tag.setUUID(OWNER_ID_TAG, ownerId)
+		tag.setBlockPos4D(PARTNER_POS_TAG, partnerPos, partnerWorld)
 		tag.setString(OWNER_NAME_TAG, ownerName)
 	}
 

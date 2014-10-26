@@ -13,6 +13,12 @@ object Multiblock {
 	// Tired of using tuples
 	case class Part(block: Block, meta: Int, offset: BlockPos, tile: Option[() => TileEntity])
 
+	final case class BlockType(block: Block, meta: Int) {
+		def isAt(world: World, pos: BlockPos) =
+			world.getBlock(pos.x, pos.y, pos.z) == block &&
+			{ if (0 to 15 contains meta) world.getBlockMetadata(pos.x, pos.y, pos.z) == meta else true }
+	}
+
 	@SubscribeEvent
 	def onFlintAndSteelPreUse(event: PlayerInteractEvent): Unit =
 		if (!event.world.isRemote) // Works only server-side
@@ -22,10 +28,7 @@ object Multiblock {
 		if (event.entityPlayer.getHeldItem != null)
 		if (event.entityPlayer.getHeldItem.getItem == net.minecraft.init.Items.flint_and_steel)
 		if (ConstructFrom forall { // Check blocks in vicinity against multiblock pattern
-			p =>
-				val pos = BlockPos(event.x, event.y, event.z) + p.offset
-				event.world.getBlock(pos.x, pos.y, pos.z) == p.block &&
-					event.world.getBlockMetadata(pos.x, pos.y, pos.z) == p.meta
+			case (offset, test) => test(event.world, BlockPos(event.x, event.y, event.z) + offset)
 		})
 		ExitLocator.netherExit(event.world, BlockPos(event.x, event.y, event.z)) match {
 			case Left(msg) => Chat.error(event.entityPlayer, msg)
@@ -44,9 +47,9 @@ object Multiblock {
 
 				Chat.ok(event.entityPlayer, "ok.gateway-constructed", fromWorld.provider.getDimensionName, toWorld.provider.getDimensionName)
 		}
-
-	private lazy val ConstructFrom = Vector(
-		Part(Blocks.redstone_block, 0, BlockPos(0, 0, 0), None),
+	// Used as a list, but logically is a map
+	private lazy val ConstructFrom = Map[BlockPos, (World, BlockPos) => Boolean](
+		BlockPos(0, 0, 0) -> isSimpleBlock(Blocks.redstone_block),
 		obsidian( -1, -1),
 		obsidian(  1, -1),
 		obsidian( -1,  1),
@@ -57,10 +60,10 @@ object Multiblock {
 		glass   (  0,  1)
 	)
 
-	private def obsidian(dx: Int, dz: Int) =
-		Part(Blocks.obsidian, 0, BlockPos(dx, 0, dz), None)
-	private def glass(dx: Int, dz: Int) =
-		Part(Blocks.glass, 0, BlockPos(dx, 0, dz), None)
+	private def isSimpleBlock(block: Block) = BlockType(block, 0).isAt _
+
+	private def obsidian(dx: Int, dz: Int) = BlockPos(dx, 0, dz) -> isSimpleBlock(Blocks.obsidian)
+	private def glass(dx: Int, dz: Int) = BlockPos(dx, 0, dz) -> isSimpleBlock(Blocks.glass)
 	// Using common replacement procedure for now
 	def disassemble(world: World, pos: BlockPos): Unit =
 		for ( part <- Parts) {
