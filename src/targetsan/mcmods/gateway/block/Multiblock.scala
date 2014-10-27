@@ -1,9 +1,11 @@
 package targetsan.mcmods.gateway.block
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent
+import cpw.mods.fml.common.registry.GameRegistry
+import cpw.mods.fml.common.registry.GameRegistry.UniqueIdentifier
 import net.minecraft.block.Block
 import net.minecraft.init.Blocks
-import net.minecraft.nbt.NBTTagCompound
+import net.minecraft.nbt.{NBTTagList, NBTTagCompound}
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.world.World
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
@@ -27,15 +29,52 @@ object Multiblock {
 			BlockType(world.getBlock(pos.x, pos.y, pos.z), world.getBlockMetadata(pos.x, pos.y, pos.z))
 	}
 
-	case class BunchOfBlocks(private[Multiblock] val blocks: Seq[(BlockPos, BlockType)]) {
-	}
+	case class BunchOfBlocks(private[Multiblock] val blocks: Iterable[(BlockPos, BlockType)])
 
 	object BunchOfBlocks {
-		def readFromNBT(tag: NBTTagCompound, name: String): BunchOfBlocks = {
-			BunchOfBlocks(Seq.empty)
-		}
-		def writeToNBT(tag: NBTTagCompound, name: String, value: BunchOfBlocks): Unit = {
+		def readFromNBT(tag: NBTTagCompound, name: String): BunchOfBlocks =
+			BunchOfBlocks(
+				for (list <- Option(tag.getTagList(name, tag.getId)).view; index <- 0 until list.tagCount() )
+				yield readBlock(list.getCompoundTagAt(index))
+			)
 
+		def writeToNBT(tag: NBTTagCompound, name: String, value: BunchOfBlocks): Unit = {
+			val list = new NBTTagList
+			for ( (pos, t) <- value.blocks)
+				list.appendTag(writeBlock(pos, t))
+			tag.setTag(name, list)
+		}
+
+		private def getShortCoord(from: Int, nth: Int) =
+			getBits(from, nth * 4, 4) - 8
+
+		private def setShortCoord(nth: Int, value: Int) =
+			setBits(0, nth * 4, 4, value + 8)
+
+		private def readBlock(tag: NBTTagCompound): (BlockPos, BlockType) = {
+			val id = new UniqueIdentifier(tag.getString("block"))
+			val block = GameRegistry.findBlock(id.modId, id.name)
+
+			val data = tag.getInteger("data")
+			val meta = getBits(data, 12, 4)
+			val pos = BlockPos(getShortCoord(data, 0), getShortCoord(data, 1), getShortCoord(data, 2))
+
+			(pos, BlockType(block, meta))
+		}
+
+		private def writeBlock(pos: BlockPos, t: BlockType): NBTTagCompound = {
+			val tag = new NBTTagCompound
+			val id = GameRegistry.findUniqueIdentifierFor(t.block)
+			tag.setString("block", id.toString)
+
+			tag.setInteger("data",
+				setShortCoord(0, pos.x) |
+				setShortCoord(1, pos.y) |
+				setShortCoord(2, pos.z) |
+				setBits(0, 12, 4, t.meta)
+			)
+
+			tag
 		}
 	}
 
@@ -56,14 +95,14 @@ object Multiblock {
 				val fromPos = BlockPos(event.x, event.y, event.z)
 				val fromWorld = event.world
 				// Construct raw blocks, store what's been there before construction
-				val storedFrom = rawAssemble(Parts, fromPos, event.world)
+				rawAssemble(Parts, fromPos, event.world) // blocks at source point aren't stored now, default replacements are used
 				val storedTo = rawAssemble(NetherParts, toPos, toWorld)
 				// Initialize stuff
 				val fromTile = fromWorld.getTileEntity(fromPos.x, fromPos.y, fromPos.z).as[tile.Core].get
 				val toTile   = toWorld.getTileEntity(toPos.x, toPos.y, toPos.z).as[tile.Core].get
 
-				fromTile.init(event.entityPlayer, toTile, BunchOfBlocks(storedFrom.toVector))
-				toTile.init(event.entityPlayer, fromTile, BunchOfBlocks(storedTo.toVector))
+				fromTile.init(event.entityPlayer, toTile, BunchOfBlocks(Seq.empty))
+				toTile.init(event.entityPlayer, fromTile, BunchOfBlocks(storedTo))
 
 				Chat.ok(event.entityPlayer, "ok.gateway-constructed", fromWorld.provider.getDimensionName, toWorld.provider.getDimensionName)
 		}
@@ -86,7 +125,12 @@ object Multiblock {
 	private def glass(dx: Int, dz: Int) = BlockPos(dx, 0, dz) -> isSimpleBlock(Blocks.glass)
 	// Using common replacement procedure for now
 	def disassemble(world: World, center: BlockPos, replaceWith: BunchOfBlocks): Unit = {
-		val replacers = replaceWith.blocks.toMap
+		val replacers =
+			Parts.mapValues({
+				case BlockType(Assets.BlockPlatform, 0) => BlockType(Blocks.gravel, 0)
+				case BlockType(Assets.BlockPlatform, m) if m % 2 != 0 => BlockType(Blocks.obsidian, 0)
+				case _ => BlockType.air
+			}) ++ replaceWith.blocks
 		for (offset <- Parts.keys ++ replacers.keys) {
 			val pos = center + offset
 			(Parts get offset, replacers get offset) match {
