@@ -27,12 +27,12 @@ object Multiblock {
 			BlockType(world.getBlock(pos.x, pos.y, pos.z), world.getBlockMetadata(pos.x, pos.y, pos.z))
 	}
 
-	case class BunchOfBlocks(private[Multiblock] val blocks: Map[BlockPos, BlockType]) {
+	case class BunchOfBlocks(private[Multiblock] val blocks: Seq[(BlockPos, BlockType)]) {
 	}
 
 	object BunchOfBlocks {
 		def readFromNBT(tag: NBTTagCompound, name: String): BunchOfBlocks = {
-			BunchOfBlocks(Map.empty)
+			BunchOfBlocks(Seq.empty)
 		}
 		def writeToNBT(tag: NBTTagCompound, name: String, value: BunchOfBlocks): Unit = {
 
@@ -62,8 +62,8 @@ object Multiblock {
 				val fromTile = fromWorld.getTileEntity(fromPos.x, fromPos.y, fromPos.z).as[tile.Core].get
 				val toTile   = toWorld.getTileEntity(toPos.x, toPos.y, toPos.z).as[tile.Core].get
 
-				fromTile.init(event.entityPlayer, toTile, BunchOfBlocks(storedFrom))
-				toTile.init(event.entityPlayer, fromTile, BunchOfBlocks(storedTo))
+				fromTile.init(event.entityPlayer, toTile, BunchOfBlocks(storedFrom.toVector))
+				toTile.init(event.entityPlayer, fromTile, BunchOfBlocks(storedTo.toVector))
 
 				Chat.ok(event.entityPlayer, "ok.gateway-constructed", fromWorld.provider.getDimensionName, toWorld.provider.getDimensionName)
 		}
@@ -85,15 +85,17 @@ object Multiblock {
 	private def obsidian(dx: Int, dz: Int) = BlockPos(dx, 0, dz) -> isSimpleBlock(Blocks.obsidian)
 	private def glass(dx: Int, dz: Int) = BlockPos(dx, 0, dz) -> isSimpleBlock(Blocks.glass)
 	// Using common replacement procedure for now
-	def disassemble(world: World, center: BlockPos, replacers: BunchOfBlocks): Unit =
-		for ( offset <- Parts.keys ++ replacers.blocks.keys) {
+	def disassemble(world: World, center: BlockPos, replaceWith: BunchOfBlocks): Unit = {
+		val replacers = replaceWith.blocks.toMap
+		for (offset <- Parts.keys ++ replacers.keys) {
 			val pos = center + offset
-			(Parts get offset, replacers.blocks get offset) match {
+			(Parts get offset, replacers get offset) match {
 				case (Some(_), x) => x.getOrElse(BlockType.air).place(world, pos)
 				case (_, Some(oldBlock)) if oldBlock != BlockType.air => oldBlock.place(world, pos)
 				case _ => ()
 			}
 		}
+	}
 
 	val PillarHeight = 3
 	// Map of all blocks included into this multiblock
