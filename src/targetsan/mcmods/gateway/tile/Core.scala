@@ -55,11 +55,7 @@ class Core extends Gateway {
 		ownerId = owner.getGameProfile.getId
 		ownerName = owner.getGameProfile.getName
 
-		for (part <- block.Multiblock.Parts)
-			worldObj
-				.getTileEntity(xCoord + part.offset.x, yCoord + part.offset.y, zCoord + part.offset.z)
-				.as[tile.Gateway]
-				.foreach { _.isAssembled = true }
+		enumGatewayTiles foreach { _.isAssembled = true }
 
 		markDirty()
 	}
@@ -71,11 +67,7 @@ class Core extends Gateway {
 
 		isAssembled = false
 		// Phase 1 - disassemble; this tile will be also marked
-		for (part <- block.Multiblock.Parts)
-			worldObj
-				.getTileEntity(xCoord + part.offset.x, yCoord + part.offset.y, zCoord + part.offset.z)
-				.as[tile.Gateway]
-				.foreach { _.isAssembled = false}
+		enumGatewayTiles foreach { _.isAssembled = false }
 		// Phase 2 - remove all
 		block.Multiblock.disassemble(worldObj, BlockPos(this))
 		// Phase 3 - kill other side
@@ -84,6 +76,13 @@ class Core extends Gateway {
 			.as[Core]
 			.foreach { _.invalidate() }
 	}
+
+	private def enumGatewayTiles =
+		for {
+			(offset, part) <- block.Multiblock.Parts
+			tile <- worldObj.getTileEntity(xCoord + offset.x, yCoord + offset.y, zCoord + offset.z).as[tile.Gateway]
+		}
+			yield tile
 
 	//******************************************************************************************************************
 	// Teleport support
@@ -180,7 +179,9 @@ class Core extends Gateway {
 		super.readFromNBT(tag)
 
  		ownerId = tag.getUUID(OWNER_ID_TAG)
-		(partnerPos, partnerWorld) = tag.getBlockPos4D(PARTNER_POS_TAG)
+		val (pos, world) = tag.getBlockPos4D(PARTNER_POS_TAG)
+		partnerPos = pos
+		partnerWorld = world
 		ownerName = tag.getString(OWNER_NAME_TAG)
 	}
 

@@ -11,8 +11,6 @@ import targetsan.mcmods.gateway.Utils._
 
 object Multiblock {
 	// Tired of using tuples
-	case class Part(block: Block, meta: Int, offset: BlockPos, tile: Option[() => TileEntity])
-
 	final case class BlockType(block: Block, meta: Int) {
 		def isAt(world: World, pos: BlockPos) =
 			world.getBlock(pos.x, pos.y, pos.z) == block &&
@@ -66,8 +64,8 @@ object Multiblock {
 	private def glass(dx: Int, dz: Int) = BlockPos(dx, 0, dz) -> isSimpleBlock(Blocks.glass)
 	// Using common replacement procedure for now
 	def disassemble(world: World, pos: BlockPos): Unit =
-		for ( part <- Parts) {
-			val p = pos + part.offset
+		for ( (offset, part) <- Parts) {
+			val p = pos + offset
 			part.block match {
 				case Assets.BlockPillar =>
 					world.setBlockToAir(p.x, p.y, p.z)
@@ -83,8 +81,8 @@ object Multiblock {
 
 	val PillarHeight = 3
 	// Map of all blocks included into this multiblock
-	lazy val Parts = Vector(
-		/* C  */ Part( Assets.BlockPlatform, 0, BlockPos(0, 0, 0), Some( () => new tile.Core) ),
+	lazy val Parts = Map[BlockPos, BlockType](
+		/* C  */ BlockPos(0, 0, 0) -> BlockType(Assets.BlockPlatform, 0),
 		/* NW */ perimeter( meta = 1, dx = -1, dz = -1),
 		/* N  */ perimeter( meta = 2, dx =  0, dz = -1),
 		/* NE */ perimeter( meta = 3, dx =  1, dz = -1),
@@ -98,20 +96,22 @@ object Multiblock {
 		/*  2 */ pillar   ( dy = 2 ),
 		/*  3 */ pillar   ( dy = 3 )
 	)
+
+	private[block] val TileEntities: PartialFunction[BlockType, TileEntity] = {
+		case BlockType(Assets.BlockPlatform, 0) => new tile.Core
+		case BlockType(Assets.BlockPlatform, m) if 1 to 8 contains m => new tile.Perimeter
+	}
 	// Used only in nether, adds air blocks around
 	private lazy val NetherParts =
-		Parts ++ {
-			for ( dx <- -1 to 1; dy <-  1 to PillarHeight; dz <- -1 to 1; if dx != 0 && dz != 0)
-				yield Part(Blocks.air, 0, BlockPos(dx, dy, dz), None)
-		}
+		Volume(-1, 1, -1, 1, PillarHeight, 1).enum.map( _ -> BlockType(Blocks.air, 0) ).toMap ++: Parts
 
 	private def perimeter(meta: Int, dx: Int, dz: Int) =
-		Part( Assets.BlockPlatform, meta, BlockPos(dx,  0, dz), Some( () => new tile.Perimeter) )
+		BlockPos(dx, 0, dz) -> BlockType(Assets.BlockPlatform, meta)
 
 	private def pillar(dy: Int) =
-		Part( Assets.BlockPillar,   0,    BlockPos( 0, dy,  0), None )
+		BlockPos(0, dy, 0) -> BlockType(Assets.BlockPillar, 0)
 
-	private def rawAssemble(parts: Seq[Part], pos: BlockPos, world: World) =
-		for ( p <- parts )
-			world.setBlock(pos.x + p.offset.x, pos.y + p.offset.y, pos.z + p.offset.z, p.block, p.meta, 3)
+	private def rawAssemble(parts: Iterable[(BlockPos,BlockType)], pos: BlockPos, world: World) =
+		for ( (offset, part) <- parts )
+			world.setBlock(pos.x + offset.x, pos.y + offset.y, pos.z + offset.z, part.block, part.meta, 3)
 }

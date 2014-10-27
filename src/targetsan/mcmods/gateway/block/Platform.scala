@@ -5,6 +5,7 @@ import net.minecraft.block.material.Material
 import net.minecraft.client.renderer.texture.IIconRegister
 import net.minecraft.entity.Entity
 import net.minecraft.entity.player.EntityPlayer
+import net.minecraft.tileentity.TileEntity
 import net.minecraft.util.IIcon
 import net.minecraft.world.{IBlockAccess, World}
 import net.minecraftforge.common.util.ForgeDirection
@@ -25,17 +26,13 @@ class Platform extends BlockContainer(Material.rock)
 	setBlockName("gateway:platform")
 	setBlockTextureName("gateway:smooth_obsidian")
 
-	private lazy val Tiles = Multiblock.Parts
-		.filter { p => p.block == Assets.BlockPlatform && p.tile.nonEmpty }
-		.map { p => (p.meta, p.tile.get) }
-		.toMap
-
 	//******************************************************************************************************************
 	// TileEntity
 	//******************************************************************************************************************
-	override def hasTileEntity(meta: Int) = Tiles contains meta
-	override def createNewTileEntity(world: World, meta: Int) =
-		Tiles get meta map { _() } orNull
+	override def hasTileEntity(meta: Int) =
+		Multiblock.TileEntities isDefinedAt Multiblock.BlockType(this, meta)
+	override def createNewTileEntity(world: World, meta: Int): TileEntity =
+		Multiblock.TileEntities.lift apply Multiblock.BlockType(this, meta) orNull
 
 	private def getTile(w: IBlockAccess, x: Int, y: Int, z: Int) = w.getTileEntity(x, y, z).as[tile.Gateway]
 

@@ -13,8 +13,8 @@ class Perimeter extends Gateway {
 	//******************************************************************************************************************
 	private lazy val CorePos =
 		block.Multiblock.Parts // Index by block type plus meta?
-			.find { elem => elem.block == Assets.BlockPlatform && elem.meta == tileMeta }
-			.map { BlockPos(this) - _.offset }
+			.find { elem => elem._2.block == Assets.BlockPlatform && elem._2.meta == tileMeta }
+			.map { BlockPos(this) - _._1 }
 	private def coreTile = CorePos flatMap { p => worldObj.getTileEntity(p.x, p.y, p.z).as[Core] }
 
 	//******************************************************************************************************************
