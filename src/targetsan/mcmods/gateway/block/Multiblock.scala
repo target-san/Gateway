@@ -42,15 +42,15 @@ object Multiblock {
 			case Right((toPos, toWorld)) =>
 				val fromPos = BlockPos(event.x, event.y, event.z)
 				val fromWorld = event.world
-				// Construct raw blocks
-				rawAssemble(Parts, fromPos, event.world)
-				rawAssemble(NetherParts, toPos, toWorld)
+				// Construct raw blocks, store what's been there before construction
+				val storedFrom = rawAssemble(Parts, fromPos, event.world)
+				val storedTo = rawAssemble(NetherParts, toPos, toWorld)
 				// Initialize stuff
 				val fromTile = fromWorld.getTileEntity(fromPos.x, fromPos.y, fromPos.z).as[tile.Core].get
 				val toTile   = toWorld.getTileEntity(toPos.x, toPos.y, toPos.z).as[tile.Core].get
 
-				fromTile.init(event.entityPlayer, toTile)
-				toTile.init(event.entityPlayer, fromTile)
+				fromTile.init(event.entityPlayer, toTile, storedFrom)
+				toTile.init(event.entityPlayer, fromTile, storedTo)
 
 				Chat.ok(event.entityPlayer, "ok.gateway-constructed", fromWorld.provider.getDimensionName, toWorld.provider.getDimensionName)
 		}

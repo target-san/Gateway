@@ -1,6 +1,5 @@
 package targetsan.mcmods.gateway.tile
 
-import java.nio.ByteBuffer
 import java.util.UUID
 
 import gateway.api._
@@ -18,6 +17,7 @@ class Core extends Gateway {
 	private var partnerWorld: World = null
 	private var ownerId: UUID = null
 	private var ownerName = ""
+	private var storedBlocks = Map.empty[BlockPos, block.Multiblock.BlockType]
 
 	//******************************************************************************************************************
 	// State flag field parts
@@ -43,7 +43,7 @@ class Core extends Gateway {
 	//******************************************************************************************************************
 	// Lifecycle control
 	//******************************************************************************************************************
-	def init(owner: EntityPlayer, partner: Core): Unit = {
+	def init(owner: EntityPlayer, partner: Core, savedBlocks: Map[BlockPos, block.Multiblock.BlockType]): Unit = {
 		if (worldObj.isRemote) return // server only
 		if (isAssembled || isInvalid)
 			throw new IllegalStateException("Gateway core can be initialized only once. Init should be done only for valid tile")
@@ -54,6 +54,7 @@ class Core extends Gateway {
 		partnerWorld = partner.getWorldObj
 		ownerId = owner.getGameProfile.getId
 		ownerName = owner.getGameProfile.getName
+		storedBlocks = savedBlocks
 
 		enumGatewayTiles foreach { _.isAssembled = true }
 
@@ -68,8 +69,8 @@ class Core extends Gateway {
 		isAssembled = false
 		// Phase 1 - disassemble; this tile will be also marked
 		enumGatewayTiles foreach { _.isAssembled = false }
-		// Phase 2 - remove all
-		block.Multiblock.disassemble(worldObj, BlockPos(this))
+		// Phase 2 - remove all, replace with what's been here before
+		block.Multiblock.disassemble(worldObj, BlockPos(this), storedBlocks)
 		// Phase 3 - kill other side
 		partnerWorld
 			.getTileEntity(partnerPos.x, partnerPos.y, partnerPos.z)
