@@ -111,7 +111,14 @@ object Multiblock {
 	private def pillar(dy: Int) =
 		BlockPos(0, dy, 0) -> BlockType(Assets.BlockPillar, 0)
 
-	private def rawAssemble(parts: Iterable[(BlockPos,BlockType)], pos: BlockPos, world: World) =
-		for ( (offset, part) <- parts )
-			world.setBlock(pos.x + offset.x, pos.y + offset.y, pos.z + offset.z, part.block, part.meta, 3)
+	private def rawAssemble(parts: Map[BlockPos,BlockType], center: BlockPos, world: World) =
+		for ( (offset, part) <- parts ) yield {
+			val pos = center + offset
+			val oldType = BlockType(
+				world.getBlock(pos.x, pos.y, pos.z),
+				world.getBlockMetadata(pos.x, pos.y, pos.z)
+			)
+			world.setBlock(pos.x, pos.y, pos.z, part.block, part.meta, 3)
+			(offset, oldType)
+		}
 }
