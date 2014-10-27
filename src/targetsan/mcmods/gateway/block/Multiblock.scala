@@ -15,6 +15,15 @@ object Multiblock {
 		def isAt(world: World, pos: BlockPos) =
 			world.getBlock(pos.x, pos.y, pos.z) == block &&
 			{ if (0 to 15 contains meta) world.getBlockMetadata(pos.x, pos.y, pos.z) == meta else true }
+
+		def place(world: World, pos: BlockPos) =
+			world.setBlock(pos.x, pos.y, pos.z, block, meta, 3)
+	}
+
+	object BlockType {
+		val air = BlockType(Blocks.air, 0)
+		def at(world: World, pos: BlockPos) =
+			BlockType(world.getBlock(pos.x, pos.y, pos.z), world.getBlockMetadata(pos.x, pos.y, pos.z))
 	}
 
 	@SubscribeEvent
@@ -63,18 +72,12 @@ object Multiblock {
 	private def obsidian(dx: Int, dz: Int) = BlockPos(dx, 0, dz) -> isSimpleBlock(Blocks.obsidian)
 	private def glass(dx: Int, dz: Int) = BlockPos(dx, 0, dz) -> isSimpleBlock(Blocks.glass)
 	// Using common replacement procedure for now
-	def disassemble(world: World, pos: BlockPos): Unit =
-		for ( (offset, part) <- Parts) {
-			val p = pos + offset
-			part.block match {
-				case Assets.BlockPillar =>
-					world.setBlockToAir(p.x, p.y, p.z)
-				case Assets.BlockPlatform =>
-					world.setBlock(p.x, p.y, p.z,
-						if      (part.meta == 0)     Blocks.netherrack
-						else if (part.meta % 2 == 0) Blocks.gravel
-						else                         Blocks.obsidian
-					)
+	def disassemble(world: World, center: BlockPos, replacers: Map[BlockPos, BlockType] = Map.empty): Unit =
+		for ( offset <- Parts.keys ++ replacers.keys) {
+			val pos = center + offset
+			(Parts get offset, replacers get offset) match {
+				case (Some(_), x) => x.getOrElse(BlockType.air).place(world, pos)
+				case (_, Some(oldBlock)) if oldBlock != BlockType.air => oldBlock.place(world, pos)
 				case _ => ()
 			}
 		}
@@ -114,11 +117,10 @@ object Multiblock {
 	private def rawAssemble(parts: Map[BlockPos,BlockType], center: BlockPos, world: World) =
 		for ( (offset, part) <- parts ) yield {
 			val pos = center + offset
-			val oldType = BlockType(
-				world.getBlock(pos.x, pos.y, pos.z),
-				world.getBlockMetadata(pos.x, pos.y, pos.z)
-			)
-			world.setBlock(pos.x, pos.y, pos.z, part.block, part.meta, 3)
-			(offset, oldType)
+			val oldType =
+				if (world.isAirBlock(pos.x, pos.y, pos.z)) BlockType.air // a bit'o hack I suppose. Airy blocks are not restored.
+				else BlockType.at(world, pos)
+			part.place(world, pos)
+			(offset, oldType) // old blocks are stored with offsets from core, not actual positions
 		}
 }
