@@ -198,6 +198,12 @@ package object Utils
 				Array[Int](pos.x, pos.y, pos.z, world.provider.dimensionId)
 			)
 		}
+
+		def getBunchOfBlocks(name: String): block.Multiblock.BunchOfBlocks =
+			block.Multiblock.BunchOfBlocks.readFromNBT(tag, name)
+
+		def setBunchOfBlocks(name: String, blocks: block.Multiblock.BunchOfBlocks): Unit =
+			block.Multiblock.BunchOfBlocks.writeToNBT(tag, name, blocks)
 	}
 
 	object Chat {

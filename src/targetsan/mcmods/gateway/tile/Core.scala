@@ -17,7 +17,7 @@ class Core extends Gateway {
 	private var partnerWorld: World = null
 	private var ownerId: UUID = null
 	private var ownerName = ""
-	private var storedBlocks = Map.empty[BlockPos, block.Multiblock.BlockType]
+	private var storedBlocks: block.Multiblock.BunchOfBlocks = null
 
 	//******************************************************************************************************************
 	// State flag field parts
@@ -43,7 +43,7 @@ class Core extends Gateway {
 	//******************************************************************************************************************
 	// Lifecycle control
 	//******************************************************************************************************************
-	def init(owner: EntityPlayer, partner: Core, savedBlocks: Map[BlockPos, block.Multiblock.BlockType]): Unit = {
+	def init(owner: EntityPlayer, partner: Core, savedBlocks: block.Multiblock.BunchOfBlocks): Unit = {
 		if (worldObj.isRemote) return // server only
 		if (isAssembled || isInvalid)
 			throw new IllegalStateException("Gateway core can be initialized only once. Init should be done only for valid tile")
@@ -175,6 +175,7 @@ class Core extends Gateway {
 	private val PARTNER_POS_TAG = "partner-pos"
 	private val OWNER_ID_TAG = "owner-id"
 	private val OWNER_NAME_TAG = "owner-name"
+	private val STORED_BLOCKS_TAG = "stored-blocks"
 
 	override def readFromNBT(tag: NBTTagCompound): Unit = {
 		super.readFromNBT(tag)
@@ -184,6 +185,7 @@ class Core extends Gateway {
 		partnerPos = pos
 		partnerWorld = world
 		ownerName = tag.getString(OWNER_NAME_TAG)
+		storedBlocks = tag.getBunchOfBlocks(STORED_BLOCKS_TAG)
 	}
 
 	override def writeToNBT(tag: NBTTagCompound): Unit = {
@@ -192,6 +194,7 @@ class Core extends Gateway {
 		tag.setUUID(OWNER_ID_TAG, ownerId)
 		tag.setBlockPos4D(PARTNER_POS_TAG, partnerPos, partnerWorld)
 		tag.setString(OWNER_NAME_TAG, ownerName)
+		tag.setBunchOfBlocks(STORED_BLOCKS_TAG, storedBlocks)
 	}
 
 	//******************************************************************************************************************

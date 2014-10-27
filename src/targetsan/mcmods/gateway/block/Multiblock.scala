@@ -3,6 +3,7 @@ package targetsan.mcmods.gateway.block
 import cpw.mods.fml.common.eventhandler.SubscribeEvent
 import net.minecraft.block.Block
 import net.minecraft.init.Blocks
+import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.world.World
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
@@ -24,6 +25,18 @@ object Multiblock {
 		val air = BlockType(Blocks.air, 0)
 		def at(world: World, pos: BlockPos) =
 			BlockType(world.getBlock(pos.x, pos.y, pos.z), world.getBlockMetadata(pos.x, pos.y, pos.z))
+	}
+
+	case class BunchOfBlocks(private[Multiblock] val blocks: Map[BlockPos, BlockType]) {
+	}
+
+	object BunchOfBlocks {
+		def readFromNBT(tag: NBTTagCompound, name: String): BunchOfBlocks = {
+			BunchOfBlocks(Map.empty)
+		}
+		def writeToNBT(tag: NBTTagCompound, name: String, value: BunchOfBlocks): Unit = {
+
+		}
 	}
 
 	@SubscribeEvent
@@ -49,8 +62,8 @@ object Multiblock {
 				val fromTile = fromWorld.getTileEntity(fromPos.x, fromPos.y, fromPos.z).as[tile.Core].get
 				val toTile   = toWorld.getTileEntity(toPos.x, toPos.y, toPos.z).as[tile.Core].get
 
-				fromTile.init(event.entityPlayer, toTile, storedFrom)
-				toTile.init(event.entityPlayer, fromTile, storedTo)
+				fromTile.init(event.entityPlayer, toTile, BunchOfBlocks(storedFrom))
+				toTile.init(event.entityPlayer, fromTile, BunchOfBlocks(storedTo))
 
 				Chat.ok(event.entityPlayer, "ok.gateway-constructed", fromWorld.provider.getDimensionName, toWorld.provider.getDimensionName)
 		}
@@ -72,10 +85,10 @@ object Multiblock {
 	private def obsidian(dx: Int, dz: Int) = BlockPos(dx, 0, dz) -> isSimpleBlock(Blocks.obsidian)
 	private def glass(dx: Int, dz: Int) = BlockPos(dx, 0, dz) -> isSimpleBlock(Blocks.glass)
 	// Using common replacement procedure for now
-	def disassemble(world: World, center: BlockPos, replacers: Map[BlockPos, BlockType] = Map.empty): Unit =
-		for ( offset <- Parts.keys ++ replacers.keys) {
+	def disassemble(world: World, center: BlockPos, replacers: BunchOfBlocks): Unit =
+		for ( offset <- Parts.keys ++ replacers.blocks.keys) {
 			val pos = center + offset
-			(Parts get offset, replacers get offset) match {
+			(Parts get offset, replacers.blocks get offset) match {
 				case (Some(_), x) => x.getOrElse(BlockType.air).place(world, pos)
 				case (_, Some(oldBlock)) if oldBlock != BlockType.air => oldBlock.place(world, pos)
 				case _ => ()
