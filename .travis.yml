@@ -17,6 +17,7 @@ deploy:
   provider: releases
   api_key:
     secure: AMxrTryOhCRw9x94oa1bSQffsf73oUoDoFW7UQlnGtWyfPbsoL5ftuNiz/FSfq5nS9Tp35nRojjUTyPqt08GPiuNpK4GpNNm29p6xcbtE4rvkMUZrqRXZ0c4lVb5dk4XQk7WM8jH4eCPCg2Jssl/g9h2plqfxrThO/RAYyPK9PA=
+  file_glob: true
   file: build/libs/*.jar
   skip_cleanup: true
   on:
