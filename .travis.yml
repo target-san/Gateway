@@ -5,8 +5,8 @@ jdk:
 - openjdk7
 - openjdk6
 install:
-- echo `git rev-list rev-base..HEAD --count`
-- set
+- export BUILD_NUMBER=${TRAVIS_BUILD_NUMBER}
+- export TRAVIS_TAG=`cat version`-${BUILD_NUMBER}
 - ./gradlew setupCIWorkspace -S
 script: ./gradlew build -S
 branches:
@@ -18,7 +18,9 @@ deploy:
   api_key:
     secure: AMxrTryOhCRw9x94oa1bSQffsf73oUoDoFW7UQlnGtWyfPbsoL5ftuNiz/FSfq5nS9Tp35nRojjUTyPqt08GPiuNpK4GpNNm29p6xcbtE4rvkMUZrqRXZ0c4lVb5dk4XQk7WM8jH4eCPCg2Jssl/g9h2plqfxrThO/RAYyPK9PA=
   file: build/libs/*.jar
+  skip_cleanup: true
   on:
-    branch: rev
     repo: target-san/Gateway
     jdk:  oraclejdk7
+    tags: true
+    all_branches: true
