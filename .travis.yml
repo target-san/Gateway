@@ -6,7 +6,7 @@ jdk:
 - openjdk6
 install:
 - export BUILD_NUMBER=${TRAVIS_BUILD_NUMBER}
-- export TRAVIS_TAG=`cat version`-${BUILD_NUMBER}
+- export TRAVIS_TAG=`cat version`b${BUILD_NUMBER}
 - ./gradlew setupCIWorkspace -S
 script: ./gradlew build -S
 branches:
