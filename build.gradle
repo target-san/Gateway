@@ -48,8 +48,9 @@ subprojects {
 	archivesBaseName = 'api-' + project.projectDir.name
 }
 
-version = "0.1"
-group= "targetsan.mcmods.gateway"
+def buildNumber = System.getenv("BUILD_NUMBER") ?: "dev"
+version = file("version").text + '-' + buildNumber
+group= "targetsan.mcmods"
 archivesBaseName = "gateway"
 
 dependencies {
