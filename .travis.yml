@@ -19,5 +19,6 @@ deploy:
     secure: AMxrTryOhCRw9x94oa1bSQffsf73oUoDoFW7UQlnGtWyfPbsoL5ftuNiz/FSfq5nS9Tp35nRojjUTyPqt08GPiuNpK4GpNNm29p6xcbtE4rvkMUZrqRXZ0c4lVb5dk4XQk7WM8jH4eCPCg2Jssl/g9h2plqfxrThO/RAYyPK9PA=
   file: build/libs/*.jar
   on:
+    branch: rev
     repo: target-san/Gateway
     jdk:  oraclejdk7
