@@ -16,25 +16,53 @@ buildscript {
    	}
 }
 
+def fromBuildNumber(build) {
+	// Pre-config, this one retrieves Forge JSON info and deduces MC and Forge versions from Forge build number
+	def verFile = file(".forge-version")
+	if (!verFile.exists()) {
+		def forgeJson = file(".forge-json")
+		if (!forgeJson.exists()) {
+    		new URL("http://files.minecraftforge.net/maven/net/minecraftforge/forge/json").withInputStream{ i -> forgeJson.withOutputStream{ it << i }}
+		}
+		def forgeData = new groovy.json.JsonSlurper().parse(forgeJson)
+		def revData = forgeData.number[build]
+		verFile.withWriter { out ->
+			out.write "${revData.mcversion}-${revData.version}"
+		}
+	}
+	// Read from verFile
+	def fullVer = verFile.text.readLines()[0].trim()
+	def (mcv, fv) = fullVer.split('\\-')
+	def fb = fv.split('\\.')[3].trim()
+	
+	if (fb != build) {
+		file(".forge-json").delete()
+		file(".forge-version").delete()
+		return fromBuildNumber(build)
+	}
+	return [
+		full: fullVer,
+		minecraft: mcv,
+		forge: fv,
+		build: fb
+	]
+}
+
+def forgeVer = fromBuildNumber(file("forge").readLines()[0].trim())
+// Config for all projects
 allprojects {
 	// plugins
 	apply plugin: "scala"
 	apply plugin: "forge"
 
 	sourceSets.main {
-       	java {
-           	srcDirs 'src'
-       	}
-       	scala {
-           	srcDirs 'src'
-   		}
-       	resources {
-           	srcDirs 'resources'
-   		}
+       	java.srcDirs 'src'
+       	scala.srcDirs 'src'
+       	resources.srcDirs "resources"
 	}
 	
 	minecraft {
-    	version = "1.7.10-10.13.0.1180"
+		version = forgeVer.full
 	}
 }
 
@@ -48,10 +76,13 @@ subprojects {
 	archivesBaseName = 'api-' + project.projectDir.name
 }
 
-def buildNumber = System.getenv("BUILD_NUMBER") ?: "dev"
-version = file("version").text + '-' + buildNumber
+def buildNumber = System.getenv("BUILD_NUMBER")
+buildNumber = buildNumber ? "b" + buildNumber : "dev"
+version = file("version").text + buildNumber
 group= "targetsan.mcmods"
 archivesBaseName = "gateway"
+
+jar.classifier = "mc${forgeVer.minecraft}-forge${forgeVer.build}"
 
 dependencies {
     compile project('api/NotEnoughItems'), project('api/CoFHLib'), project('api/AppEng2')
