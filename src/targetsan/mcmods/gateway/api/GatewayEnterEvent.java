@@ -1,4 +1,4 @@
-package gateway.api;
+package targetsan.mcmods.gateway.api;
 
 import cpw.mods.fml.common.eventhandler.Cancelable;
 import net.minecraft.entity.Entity;

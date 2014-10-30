@@ -1,4 +1,4 @@
-package gateway.api;
+package targetsan.mcmods.gateway.api;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.util.ChunkCoordinates;
