@@ -6,8 +6,9 @@
 
 To construct your first gateway, you'll need:
 
-0. Place multiblock platform, 3x3, consisting of 4 obsidian, 4 glass and 1 redstone block
-0. Ignite redstone block in center with flint'n'steel
+0. Place multiblock platform, 3x3, consisting of 4 obsidian, 4 glass and 1 redstone block ![][images/gateway-construct-from.png]
+0. Ignite redstone block in center with flint'n'steel ![][images/gateway-ignite.png]
+0. Construct will transform into gateway almost instantly ![][images/gateway.png]
 
 ## Exit search algorithm
 
