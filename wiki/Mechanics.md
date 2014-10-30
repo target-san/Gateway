@@ -23,15 +23,32 @@ To construct your first gateway, you'll need:
 0. Ignite redstone block in center with flint'n'steel ![](images/ignite.png)
 0. Construct will transform into gateway almost instantly ![](images/gateway.png)
 
+There's an option which allows to adjust exit location. See [Anchors](#anchors)
+
 ## Removal
 
 Only owner is allowed to remove gateway.
 To do so, you need to light 4 blocks directly adjacent to central pillar with flint'n'steel. All 4 blocks must be lit by the owner, otherwise the trick won't work
 ![](images/removal.png)
+Not all initial blocks would survive procedure. Only obsidian is strong enough to return. Glass shatters to nothing due to high flux. And redstone burns down to gravel, becoming useless
+![](images/remnants.png)
+On the other side, all blocks removed by exit construction will return onto their places like nothing has happened. So you'll see no traces of gateway.
 
 ## Exit search algorithm
 
-0. Exit location pivot is found
-  * Pivot's X and Z are source gateway's ones, adjusted by worlds' movement factors. For Overworld-Nether pair, they're effectively divided by 8
-  * Y is always Nether middle height, which is 64
-0. Lookup volume around pivot is scanned.
+0. Exit location pivot is found. Its X and Z are source gateway's ones, adjusted by worlds' movement factors. For Overworld-Nether pair, they're effectively divided by 8
+0. Lookup volume around pivot is scanned. Lookup volume is between (X - 5, 32, Z - 5) and (X + 5, 96, Z + 5)
+0. Each block in lookup volume is classified by being ordinary solid block, liquid, air, etc.
+0. If other gateway is found in vicinity, all blocks in its dead zone (which is a column spanning from top to bottom) are marked as invalid, and prevent other gateway from spawning
+0. Then, all possible positions are rated by their weights. The less weight, the better
+  * Each non-air block above future platform adds to weight, as it needs to be removed
+  * Each non-solid block in place of future platofrm adds to weight, as it needs to be replaced with solid platform block
+  * Any liquid in near vicinity (lava in case of Nether) completely prevents gateway from spawning. This vicinity is a volume between (cx - 3, cy, cz - 3) and (cx + 3, cy + 4, cz + 3). This countermeasure should prevent gateway exit from pouring unsuspecting player into lava
+  * Any blocks in direct gateway's volume, which have tile entities, prevent it from open, because they're stored in process
+  * Distance from lookup volume center also adds to weight
+
+Player can adjust exit location by using
+
+### Anchors
+
+Anchor is just a block of redstone placed somewhere in lookup volume. If exit search algorithm finds one, it would prefer that block position above all others. Please note that there should be only one anchor, otherwise gateway won't open. Also, if you close gateway, you'll get your anchor back.
