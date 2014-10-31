@@ -10,10 +10,22 @@ buildscript {
            	name = "sonatype"
            	url = "https://oss.sonatype.org/content/repositories/snapshots/"
        	}
+       	maven {
+       		name = "spring"
+       		url = "http://repo.spring.io/plugins-release"
+       	}
    	}
    	dependencies {
        	classpath "net.minecraftforge.gradle:ForgeGradle:1.2-SNAPSHOT"
+       	classpath "org.springframework.build.gradle:propdeps-plugin:0.0.7"
    	}
+}
+
+repositories {
+	maven {
+		name = "chickenbones"
+		url = "http://chickenbones.net/maven"
+	}
 }
 
 def fromBuildNumber(build) {
@@ -49,31 +61,27 @@ def fromBuildNumber(build) {
 }
 
 def forgeVer = fromBuildNumber(file("forge").readLines()[0].trim())
-// Config for all projects
-allprojects {
-	// plugins
-	apply plugin: "scala"
-	apply plugin: "forge"
+// Dependency versions
+def neiVersion = "1.0.2.15"
+// plugins
+apply plugin: "propdeps"
+apply plugin: "propdeps-maven"
+apply plugin: "propdeps-idea"
+apply plugin: "propdeps-eclipse"
 
-	sourceSets.main {
-       	java.srcDirs 'src'
-       	scala.srcDirs 'src'
-       	resources.srcDirs "resources"
-	}
-	
-	minecraft {
-		version = forgeVer.full
-	}
+apply plugin: "scala"
+apply plugin: "forge"
+
+sourceSets.main {
+	java.srcDirs 'src'
+	scala.srcDirs 'src'
+	resources.srcDirs "resources"
 }
 
+minecraft.version = forgeVer.full
 
-subprojects {
-	// Subprojects are built in 'build' folder hierarchically, according to their location
-	buildDir new File( new File(rootProject.projectDir, "build"), project.name)
-
-	version = "1.0"
-	group = 'api'
-	archivesBaseName = 'api-' + project.projectDir.name
+dependencies {
+	provided "codechicken:NotEnoughItems:${forgeVer.minecraft}-${neiVersion}:dev"
 }
 
 def buildNumber = System.getenv("BUILD_NUMBER")
@@ -84,9 +92,6 @@ archivesBaseName = "gateway"
 
 jar.classifier = "mc${forgeVer.minecraft}-forge${forgeVer.build}"
 
-dependencies {
-    compile project('api/NotEnoughItems'), project('api/CoFHLib'), project('api/AppEng2')
-}
 // Standard thing with setting properties in mcmod.info
 processResources
 {
