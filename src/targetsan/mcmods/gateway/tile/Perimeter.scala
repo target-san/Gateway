@@ -11,7 +11,9 @@ import net.minecraftforge.common.util.ForgeDirection
 
 import scala.reflect.ClassTag
 
-class Perimeter extends Gateway with Linker{
+class Perimeter extends Gateway with Linker
+	with linkers.FluidHandlerLinker
+{
 	//******************************************************************************************************************
 	// Some calculated fields
 	//******************************************************************************************************************
