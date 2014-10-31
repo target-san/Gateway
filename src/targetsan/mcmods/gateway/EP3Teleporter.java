@@ -11,6 +11,7 @@ import net.minecraft.network.play.server.S1FPacketSetExperience;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ServerConfigurationManager;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.WorldServer;
 import cpw.mods.fml.common.FMLCommonHandler;
 
@@ -126,7 +127,8 @@ public class EP3Teleporter {
 			.sendPacket(new S1FPacketSetExperience(player.experience,
 					player.experienceTotal, player.experienceLevel));
 			FMLCommonHandler.instance().firePlayerChangedDimensionEvent(player, exitingWorld.provider.dimensionId, enteringWorld.provider.dimensionId);
-			// GameRegistry.onPlayerChangedDimension(player); // TODO
+
+            enteringWorld.getChunkProvider().loadChunk(MathHelper.floor_double(player.posX) >> 4, MathHelper.floor_double(player.posZ) >> 4);
 
 			return player;
 		}

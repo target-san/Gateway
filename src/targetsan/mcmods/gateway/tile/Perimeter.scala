@@ -13,6 +13,8 @@ import scala.reflect.ClassTag
 
 class Perimeter extends Gateway with Linker
 	with linkers.FluidHandlerLinker
+	with linkers.ItemDuctLinker
+	with linkers.EnergyRFLinker
 {
 	//******************************************************************************************************************
 	// Some calculated fields
