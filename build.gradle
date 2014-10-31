@@ -21,13 +21,6 @@ buildscript {
    	}
 }
 
-repositories {
-	maven {
-		name = "chickenbones"
-		url = "http://chickenbones.net/maven"
-	}
-}
-
 def fromBuildNumber(build) {
 	// Pre-config, this one retrieves Forge JSON info and deduces MC and Forge versions from Forge build number
 	def verFile = file(".forge-version")
@@ -61,8 +54,6 @@ def fromBuildNumber(build) {
 }
 
 def forgeVer = fromBuildNumber(file("forge").readLines()[0].trim())
-// Dependency versions
-def neiVersion = "1.0.2.15"
 // plugins
 apply plugin: "propdeps"
 apply plugin: "propdeps-maven"
@@ -81,7 +72,7 @@ sourceSets.main {
 minecraft.version = forgeVer.full
 
 dependencies {
-	provided "codechicken:NotEnoughItems:${forgeVer.minecraft}-${neiVersion}:dev"
+	provided fileTree("api")
 }
 
 def buildNumber = System.getenv("BUILD_NUMBER")
