@@ -49,6 +49,8 @@ package object Utils
 		def + (that: BlockPos) = offset(that)
 		def - (that: BlockPos) = offset(-that)
 
+		def * (mult: Int) = new BlockPos(x * mult, y * mult, z * mult)
+
 		def to (that: BlockPos) = Volume(this, that)
 	}
 
@@ -56,6 +58,7 @@ package object Utils
 		def apply(x: Int, y: Int, z: Int) = new BlockPos(x, y, z)
 		def apply(tile: TileEntity) = new BlockPos(tile.xCoord, tile.yCoord, tile.zCoord)
 		def apply(coords: ChunkCoordinates) = new BlockPos(coords.posX, coords.posY, coords.posZ)
+		def apply(offset: ForgeDirection) = new BlockPos(offset.offsetX, offset.offsetY, offset.offsetZ)
 
 		def unapply(pos: BlockPos): Option[(Int, Int, Int)] = Some((pos.x, pos.y, pos.z))
 	}

@@ -40,6 +40,12 @@ class Core extends Gateway {
 	private def areMarksSet = getState(4, 4) == 0x0F
 
 	//******************************************************************************************************************
+	// Accessing partner's coordinates
+	//******************************************************************************************************************
+	def getPartnerPos = partnerPos
+	def getPartnerWorld = partnerWorld
+
+	//******************************************************************************************************************
 	// Lifecycle control
 	//******************************************************************************************************************
 	def init(owner: EntityPlayer, partner: Core, savedBlocks: block.Multiblock.BunchOfBlocks): Unit = {

@@ -13,11 +13,14 @@ import net.minecraftforge.common.util.ForgeDirection
 import targetsan.mcmods.gateway._
 import targetsan.mcmods.gateway.Utils._
 
+import scala.reflect.ClassTag
+
 /** Represents gateway's solid platform tiles
  *  Platform is intended to be 3x3
  */
 class Platform extends BlockContainer(Material.rock)
 	with TeleportActor
+	with BlockLinker
 	with DropsNothing
 	with Unbreakable
 	with NoCreativePick
@@ -41,6 +44,12 @@ class Platform extends BlockContainer(Material.rock)
 	//******************************************************************************************************************
 	override def teleportEntity(world: World, x: Int, y: Int, z: Int, entity: Entity) =
 		getTile(world, x, y, z) foreach { _.teleport(entity) }
+
+	//******************************************************************************************************************
+	// BlockLinker
+	//******************************************************************************************************************
+	override def linkedBlockAs[T: ClassTag](world: IBlockAccess, x: Int, y: Int, z: Int, side: ForgeDirection): Option[(T, World, BlockPos)] =
+		world.getTileEntity(x, y, z).as[tile.Linker] flatMap { _.linkedBlockAs[T](side) }
 
 	//******************************************************************************************************************
 	// World interaction
