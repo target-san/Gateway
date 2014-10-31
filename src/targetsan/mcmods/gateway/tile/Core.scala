@@ -2,7 +2,6 @@ package targetsan.mcmods.gateway.tile
 
 import java.util.UUID
 
-import gateway.api._
 import net.minecraft.entity.Entity
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.nbt.NBTTagCompound
@@ -39,6 +38,12 @@ class Core extends Gateway {
 	private def setDisposalMark(tile: BlockPos, value: Boolean) =
 		if (canMark(tile)) setFlag(4 + tileToMark(tile), value)
 	private def areMarksSet = getState(4, 4) == 0x0F
+
+	//******************************************************************************************************************
+	// Accessing partner's coordinates
+	//******************************************************************************************************************
+	def getPartnerPos = partnerPos
+	def getPartnerWorld = partnerWorld
 
 	//******************************************************************************************************************
 	// Lifecycle control
@@ -113,7 +118,7 @@ class Core extends Gateway {
 	private def doTeleport(entity: Entity): Unit = {
 		val (ex, ey, ez) = getExitPos(entity)
 
-		val enterEvent = new GatewayEnterEvent(
+		val enterEvent = new api.GatewayEnterEvent(
 			entity,
 			new ChunkCoordinates(xCoord, yCoord, zCoord),
 			worldObj,
@@ -133,7 +138,7 @@ class Core extends Gateway {
 			r.timeUntilPortal = DefaultCooldown
 
 		MinecraftForge.EVENT_BUS.post(
-			new GatewayLeaveEvent(
+			new api.GatewayLeaveEvent(
 				newEntity,
 				new ChunkCoordinates(xCoord, yCoord, zCoord),
 				worldObj,
