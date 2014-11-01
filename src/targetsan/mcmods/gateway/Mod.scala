@@ -30,6 +30,7 @@ object GatewayMod {
     {
     	MinecraftForge.EVENT_BUS.register(Assets)
 	    MinecraftForge.EVENT_BUS.register(block.Multiblock)
+	    MinecraftForge.EVENT_BUS.register(AchievementTracker)
     }
 }
 

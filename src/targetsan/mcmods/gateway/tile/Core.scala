@@ -123,7 +123,7 @@ class Core extends Gateway {
 	private def doTeleport(entity: Entity, data: CoreData): Unit = {
 		val (ex, ey, ez) = getExitPos(entity, data)
 
-		val enterEvent = new api.GatewayEnterEvent(
+		val enterEvent = new api.GatewayTravelEvent.Enter(
 			entity,
 			new ChunkCoordinates(xCoord, yCoord, zCoord),
 			worldObj,
@@ -143,7 +143,7 @@ class Core extends Gateway {
 			r.timeUntilPortal = DefaultCooldown
 
 		MinecraftForge.EVENT_BUS.post(
-			new api.GatewayLeaveEvent(
+			new api.GatewayTravelEvent.Leave(
 				newEntity,
 				new ChunkCoordinates(xCoord, yCoord, zCoord),
 				worldObj,
