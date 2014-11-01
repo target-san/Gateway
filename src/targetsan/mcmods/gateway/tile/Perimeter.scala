@@ -27,42 +27,32 @@ class Perimeter extends Gateway with Linker
 	private lazy val CorePos = BlockPos(this) - ThisOffset
 	private def coreTile = worldObj.getTileEntity(CorePos.x, CorePos.y, CorePos.z).as[Core]
 
-	private lazy val LinkedPositions =
-		List (
-			ThisOffset.x match {
-				case -1 => ForgeDirection.WEST
-				case  1 => ForgeDirection.EAST
-				case _ => ForgeDirection.UNKNOWN
-			},
-			ThisOffset.z match {
-				case -1 => ForgeDirection.NORTH
-				case  1 => ForgeDirection.SOUTH
-				case _ => ForgeDirection.UNKNOWN
-			}
-		)
-		.filter { _ != ForgeDirection.UNKNOWN }
-		.map { s => (s, ThisOffset - BlockPos(s) * 3 + coreTile.get.getPartnerPos) }
-		.toMap
-
-	private lazy val LinkedWorld = coreTile.get.getPartnerWorld
+	private lazy val LinkedLocs = {
+		for {
+			(otherPos, otherWorld) <- coreTile.flatMap(_.otherCoreLoc).view
+			side <- List(offsetToDirection(ThisOffset.x, 0, 0), offsetToDirection(0, 0, ThisOffset.z))
+			if side != ForgeDirection.UNKNOWN
+		}
+		yield (side, (ThisOffset - BlockPos(side) + otherPos, otherWorld))
+	}.toMap
 
 	//******************************************************************************************************************
 	// Linker
 	//******************************************************************************************************************
 	def linkedBlockAs[T: ClassTag](side: ForgeDirection): Option[(T, World, BlockPos)] =
 		if (!isAlive) None
-		else LinkedPositions
+		else LinkedLocs
 			.get(side)
-			.flatMap { pos =>
-				LinkedWorld
+			.flatMap { case (pos, world) =>
+				world
 					.getBlock(pos.x, pos.y, pos.z).as[T]
-					.map { (_, LinkedWorld, pos)}
+					.map { (_, world, pos)}
 			}
 
 	// Returns linked tile entity if it's presend and of the required type
 	def linkedTileAs[T: ClassTag](side: ForgeDirection): Option[T] =
 		if (!isAlive) None
-		else LinkedPositions get side flatMap { p => LinkedWorld.getTileEntity(p.x, p.y, p.z).as[T] }
+		else LinkedLocs get side flatMap { case (pos, world) => world.getTileEntity(pos.x, pos.y, pos.z).as[T] }
 	//******************************************************************************************************************
 	// State flag field parts
 	//******************************************************************************************************************
@@ -110,7 +100,7 @@ class Perimeter extends Gateway with Linker
 			coreTile foreach { _.stopDisposeFrom(BlockPos(this)) }
 
 		for {
-			(side, _) <- LinkedPositions
+			(side, _) <- LinkedLocs
 			(block, world, pos) <- linkedBlockAs[Block](side)
 		}
 			block.onNeighborBlockChange(world, pos.x, pos.y, pos.z, Assets.BlockPlatform)

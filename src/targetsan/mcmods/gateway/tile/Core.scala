@@ -11,12 +11,16 @@ import net.minecraftforge.common.MinecraftForge
 import targetsan.mcmods.gateway._
 import targetsan.mcmods.gateway.Utils._
 
+final case class CoreData(
+	otherPos: BlockPos,
+	otherWorld: World,
+	ownerId: UUID,
+	ownerName: String,
+	storedBlocks: block.Multiblock.BunchOfBlocks)
+
 class Core extends Gateway {
-	private var partnerPos: BlockPos = null
-	private var partnerWorld: World = null
-	private var ownerId: UUID = null
-	private var ownerName = ""
-	private var storedBlocks: block.Multiblock.BunchOfBlocks = null
+	private var data: Option[CoreData] = None
+	private def getData = if (isAlive) data else None
 
 	//******************************************************************************************************************
 	// State flag field parts
@@ -42,8 +46,9 @@ class Core extends Gateway {
 	//******************************************************************************************************************
 	// Accessing partner's coordinates
 	//******************************************************************************************************************
-	def getPartnerPos = partnerPos
-	def getPartnerWorld = partnerWorld
+	def otherCoreLoc =
+		if (isAlive) data map { d => (d.otherPos, d.otherWorld) }
+		else None
 
 	//******************************************************************************************************************
 	// Lifecycle control
@@ -55,11 +60,13 @@ class Core extends Gateway {
 
 		isAssembled = true
 
-		partnerPos = BlockPos(partner)
-		partnerWorld = partner.getWorldObj
-		ownerId = owner.getGameProfile.getId
-		ownerName = owner.getGameProfile.getName
-		storedBlocks = savedBlocks
+		data = Some(CoreData(
+			BlockPos(partner),
+			partner.getWorldObj,
+			owner.getGameProfile.getId,
+			owner.getGameProfile.getName,
+			savedBlocks
+		))
 
 		enumGatewayTiles foreach { _.isAssembled = true }
 
@@ -68,19 +75,19 @@ class Core extends Gateway {
 
 	override def invalidate(): Unit = {
 		super.invalidate()
-		if (!isAlive)
-			return
 
-		isAssembled = false
-		// Phase 1 - disassemble; this tile will be also marked
-		enumGatewayTiles foreach { _.isAssembled = false }
-		// Phase 2 - remove all, replace with what's been here before
-		block.Multiblock.disassemble(worldObj, BlockPos(this), storedBlocks)
-		// Phase 3 - kill other side
-		partnerWorld
-			.getTileEntity(partnerPos.x, partnerPos.y, partnerPos.z)
-			.as[Core]
-			.foreach { _.invalidate() }
+		for (d <- getData) {
+			isAssembled = false
+			// Phase 1 - disassemble; this tile will be also marked
+			enumGatewayTiles foreach { _.isAssembled = false }
+			// Phase 2 - remove all, replace with what's been here before
+			// Phase 3 - kill other side
+			block.Multiblock.disassemble(worldObj, BlockPos(this), d.storedBlocks)
+			d.otherWorld
+				.getTileEntity(d.otherPos.x, d.otherPos.y, d.otherPos.z)
+				.as[Core]
+				.foreach { _.invalidate() }
+		}
 	}
 
 	private def enumGatewayTiles =
@@ -106,24 +113,22 @@ class Core extends Gateway {
 	// so we're scheduling TP till TE update loop and then do the action
 	override def updateEntity(): Unit = {
 		super.updateEntity()
-		if (!isAlive) return
-
-		if (teleportSet.nonEmpty) {
+		for (d <- getData) {
 			for (e <- teleportSet)
-				doTeleport(e)
+				doTeleport(e, d)
 			teleportSet = Set.empty
 		}
 	}
 	// Performs actual teleportation
-	private def doTeleport(entity: Entity): Unit = {
-		val (ex, ey, ez) = getExitPos(entity)
+	private def doTeleport(entity: Entity, data: CoreData): Unit = {
+		val (ex, ey, ez) = getExitPos(entity, data)
 
 		val enterEvent = new api.GatewayEnterEvent(
 			entity,
 			new ChunkCoordinates(xCoord, yCoord, zCoord),
 			worldObj,
-			partnerPos.toChunkCoordinates,
-			partnerWorld,
+			data.otherPos.toChunkCoordinates,
+			data.otherWorld,
 			Vec3.createVectorHelper(ex, ey, ez))
 
 		if (MinecraftForge.EVENT_BUS.post(enterEvent))
@@ -142,8 +147,8 @@ class Core extends Gateway {
 				newEntity,
 				new ChunkCoordinates(xCoord, yCoord, zCoord),
 				worldObj,
-				partnerPos.toChunkCoordinates,
-				partnerWorld)
+				data.otherPos.toChunkCoordinates,
+				data.otherWorld)
 		)
 
 	}
@@ -152,19 +157,21 @@ class Core extends Gateway {
 	// In-game deconstruction
 	//******************************************************************************************************************
 	def startDisposeFrom(invoker: EntityPlayer, tile: BlockPos): Unit = {
-		if (!isAlive || invoker == null || !canMark(tile))
+		if (invoker == null || !canMark(tile))
 			return
 
-		if (invoker.getGameProfile.getId != ownerId) {
-			Chat.error(invoker, "error.not-an-owner", ownerName)
-			return
-		}
+		for (d <- getData) {
+			if (invoker.getGameProfile.getId != d.ownerId) {
+				Chat.error(invoker, "error.not-an-owner", d.ownerName)
+				return
+			}
 
-		setDisposalMark(tile, value = true)
+			setDisposalMark(tile, value = true)
 
-		if (areMarksSet) {
-			invalidate()
-			Chat.warn(invoker, "warn.gateway-closed", worldObj.provider.getDimensionName, partnerWorld.provider.getDimensionName)
+			if (areMarksSet) {
+				invalidate()
+				Chat.warn(invoker, "warn.gateway-closed", worldObj.provider.getDimensionName, d.otherWorld.provider.getDimensionName)
+			}
 		}
 	}
 
@@ -185,32 +192,39 @@ class Core extends Gateway {
 	override def readFromNBT(tag: NBTTagCompound): Unit = {
 		super.readFromNBT(tag)
 
- 		ownerId = tag.getUUID(OWNER_ID_TAG)
+		if (!isAssembled) return
+
 		val (pos, world) = tag.getBlockPos4D(PARTNER_POS_TAG)
-		partnerPos = pos
-		partnerWorld = world
-		ownerName = tag.getString(OWNER_NAME_TAG)
-		storedBlocks = tag.getBunchOfBlocks(STORED_BLOCKS_TAG)
+		data = Some(CoreData(
+			pos,
+			world,
+			tag.getUUID(OWNER_ID_TAG),
+			tag.getString(OWNER_NAME_TAG),
+			tag.getBunchOfBlocks(STORED_BLOCKS_TAG)
+		))
 	}
 
 	override def writeToNBT(tag: NBTTagCompound): Unit = {
 		super.writeToNBT(tag)
 
-		tag.setUUID(OWNER_ID_TAG, ownerId)
-		tag.setBlockPos4D(PARTNER_POS_TAG, partnerPos, partnerWorld)
-		tag.setString(OWNER_NAME_TAG, ownerName)
-		tag.setBunchOfBlocks(STORED_BLOCKS_TAG, storedBlocks)
+		if (isAssembled)
+			for (d <- data) {
+				tag.setBlockPos4D(PARTNER_POS_TAG, d.otherPos, d.otherWorld)
+				tag.setUUID(OWNER_ID_TAG, d.ownerId)
+				tag.setString(OWNER_NAME_TAG, d.ownerName)
+				tag.setBunchOfBlocks(STORED_BLOCKS_TAG, d.storedBlocks)
+			}
 	}
 
 	//******************************************************************************************************************
 	// Teleport helpers
 	//******************************************************************************************************************
 
-	private def getExitPos(entity: Entity) =
-		translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord))
+	private def getExitPos(entity: Entity, d: CoreData) =
+		translateCoordEnterToExit(getEntityThruBlockExit(entity, xCoord, yCoord, zCoord), d)
 	// Transposes specified set of coordinates along vector specified by this and source TEs' coords
-	private def translateCoordEnterToExit(coord: (Double, Double, Double)): (Double, Double, Double) =
-		(coord._1 + partnerPos.x - xCoord, coord._2 + partnerPos.y - yCoord, coord._3 + partnerPos.z - zCoord)
+	private def translateCoordEnterToExit(coord: (Double, Double, Double), d: CoreData): (Double, Double, Double) =
+		(coord._1 + d.otherPos.x - xCoord, coord._2 + d.otherPos.y - yCoord, coord._3 + d.otherPos.z - zCoord)
 	/** This function is used to calculate entity's position after moving through a block
 	  *  Entity is considered to touch block at the start of move, and it's really necessary
 	  *  for the computation to be correct. The move itself is like entity has moved in XZ plane
