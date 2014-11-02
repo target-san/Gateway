@@ -1,14 +1,17 @@
 package targetsan.mcmods.gateway.block.linkers
 
-import cpw.mods.fml.common.Optional.{Method, Interface}
+import cpw.mods.fml.common.Optional.{InterfaceList, Method, Interface}
 import net.minecraft.world.World
 import net.minecraftforge.common.util.ForgeDirection
 import powercrystals.minefactoryreloaded.api.rednet._
 import powercrystals.minefactoryreloaded.api.rednet.connectivity._
 import targetsan.mcmods.gateway._
 
-@Interface( iface = "powercrystals.minefactoryreloaded.api.rednet.IRedNetOmniNode", modid = "MineFactoryReloaded", striprefs = true)
-trait RedNetLinker extends block.BlockLinker with IRedNetOmniNode {
+@InterfaceList(Array(
+	new Interface(iface = "powercrystals.minefactoryreloaded.api.rednet.IRedNetOmniNode", modid = "MineFactoryReloaded", striprefs = true),
+	new Interface(iface = "powercrystals.minefactoryreloaded.api.rednet.IRedNetNetworkContainer", modid = "MineFactoryReloaded", striprefs = true)
+))
+trait RedNetLinker extends block.BlockLinker with IRedNetOmniNode with IRedNetNetworkContainer {
 	@Method( modid = "MineFactoryReloaded" )
 	override def getConnectionType(world: World, x: Int, y: Int, z: Int, side: ForgeDirection): RedNetConnectionType =
 		linkedBlockAs[IRedNetConnection](world, x, y, z, side)
@@ -46,4 +49,18 @@ trait RedNetLinker extends block.BlockLinker with IRedNetOmniNode {
 				case (block, w, pos) => block.getOutputValues(w, pos.x, pos.y, pos.z, side)
 			}
 			.getOrElse(Array.fill(16)(0))
+
+	@Method( modid = "MineFactoryReloaded" )
+	override def updateNetwork(world: World, x: Int, y: Int, z: Int, side: ForgeDirection): Unit =
+		linkedBlockAs[IRedNetNetworkContainer](world, x, y, z, side)
+			.foreach {
+				case (block, w, pos) => block.updateNetwork(w, pos.x, pos.y, pos.z, side)
+			}
+
+	@Method( modid = "MineFactoryReloaded" )
+	override def updateNetwork(world: World, x: Int, y: Int, z: Int, subnet: Int, side: ForgeDirection): Unit =
+		linkedBlockAs[IRedNetNetworkContainer](world, x, y, z, side)
+			.foreach {
+				case (block, w, pos) => block.updateNetwork(w, pos.x, pos.y, pos.z, subnet, side)
+			}
 }
