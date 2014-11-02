@@ -9,7 +9,7 @@ import targetsan.mcmods.gateway.Utils._
 object AchievementTracker {
 	@SubscribeEvent
 	def onPlayerTravel(event: api.GatewayTravelEvent.Leave): Unit =
-		for (player <- event.entity.as[EntityPlayer]) {
+		for (rider <- enumRiders(event.entity); player <- rider.as[EntityPlayer]) {
 			val fromId = event.fromWorld.provider.dimensionId
 			val toId = event.toWorld.provider.dimensionId
 			val trigger = player.triggerAchievement _
