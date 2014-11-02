@@ -21,6 +21,7 @@ import scala.reflect.ClassTag
 class Platform extends BlockContainer(Material.rock)
 	with TeleportActor
 	with BlockLinker
+	with linkers.RedNetLinker
 	with DropsNothing
 	with Unbreakable
 	with NoCreativePick

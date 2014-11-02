@@ -11,7 +11,11 @@ import net.minecraftforge.common.MinecraftForge
 import net.minecraftforge.event.world.WorldEvent
 import net.minecraftforge.oredict.OreDictionary
 
-@Mod(modid = "gateway", useMetadata = true, modLanguage = "scala")
+@Mod(
+	modid = "gateway",
+	modLanguage = "scala",
+	dependencies = "required-after:Forge;after:NotEnoughItems;after:CoFHCore;after:MineFactoryReloaded"
+)
 object GatewayMod {
 	val MODID = "gateway"
 
