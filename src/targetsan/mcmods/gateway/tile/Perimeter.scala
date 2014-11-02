@@ -27,32 +27,35 @@ class Perimeter extends Gateway with Linker
 	private lazy val CorePos = BlockPos(this) - ThisOffset
 	private def coreTile = worldObj.getTileEntity(CorePos.x, CorePos.y, CorePos.z).as[Core]
 
+	private lazy val LinkedSides =
+		Set(offsetToDirection(ThisOffset.x, 0, 0), offsetToDirection(0, 0, ThisOffset.z))
+		.filter { _ != ForgeDirection.UNKNOWN }
+
 	private lazy val LinkedLocs = {
 		for {
 			(otherPos, otherWorld) <- coreTile.flatMap(_.otherCoreLoc).view
-			side <- List(offsetToDirection(ThisOffset.x, 0, 0), offsetToDirection(0, 0, ThisOffset.z))
-			if side != ForgeDirection.UNKNOWN
+			side <- LinkedSides
 		}
-		yield (side, (ThisOffset - BlockPos(side) + otherPos, otherWorld))
+		yield (side, (ThisOffset - BlockPos(side) * 3 + otherPos, otherWorld))
 	}.toMap
 
 	//******************************************************************************************************************
 	// Linker
 	//******************************************************************************************************************
-	def linkedBlockAs[T: ClassTag](side: ForgeDirection): Option[(T, World, BlockPos)] =
+	private def onLinkedTile[T](side: ForgeDirection)(func: (BlockPos, World) => Option[T]): Option[T] =
 		if (!isAlive) None
-		else LinkedLocs
-			.get(side)
-			.flatMap { case (pos, world) =>
-				world
-					.getBlock(pos.x, pos.y, pos.z).as[T]
-					.map { (_, world, pos)}
-			}
+		else LinkedLocs get side flatMap { case (pos, world) => func(pos, world) }
+
+	def linkedBlockAs[T: ClassTag](side: ForgeDirection): Option[(T, World, BlockPos)] =
+		onLinkedTile(side) { (pos, world) =>
+			world
+				.getBlock(pos.x, pos.y, pos.z).as[T]
+				.map { (_, world, pos)}
+		}
 
 	// Returns linked tile entity if it's presend and of the required type
 	def linkedTileAs[T: ClassTag](side: ForgeDirection): Option[T] =
-		if (!isAlive) None
-		else LinkedLocs get side flatMap { case (pos, world) => world.getTileEntity(pos.x, pos.y, pos.z).as[T] }
+		onLinkedTile(side) { (pos, world) => world.getTileEntity(pos.x, pos.y, pos.z).as[T] }
 	//******************************************************************************************************************
 	// State flag field parts
 	//******************************************************************************************************************
